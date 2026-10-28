@@ -1,5 +1,9 @@
 import Foundation
 import Observation
+#if FIREBASE_ENABLED
+import FirebaseAuth
+import FirebaseCore
+#endif
 
 @MainActor @Observable
 final class AppModel {
@@ -13,6 +17,7 @@ final class AppModel {
     var isLoading = false
     var hapticTrigger = 0
     var isDemo: Bool
+    var inviteCode: String?
 
     init(repository: any PrayerRepository, isDemo: Bool) {
         self.repository = repository
@@ -29,6 +34,40 @@ final class AppModel {
         await refresh()
     }
 
+    func restoreSession() async {
+        #if FIREBASE_ENABLED
+        guard !isDemo, FirebaseApp.app() != nil, let current = Auth.auth().currentUser else { return }
+        await signedIn(id: current.uid, name: current.displayName ?? "Friend")
+        #endif
+    }
+
+    func signOut() {
+        #if FIREBASE_ENABLED
+        do { try Auth.auth().signOut() } catch { errorMessage = error.localizedDescription; return }
+        #endif
+        user = nil; group = nil; path = []; inviteCode = nil; composer = nil
+    }
+
+    #if FIREBASE_ENABLED
+    func enterGroup(name: String, code: String) async {
+        guard let user, let live = repository as? FirebasePrayerRepository else { return }
+        isLoading = true
+        do {
+            if code.isEmpty { try await live.createGroup(name: name, user: user) }
+            else { try await live.joinGroup(code: code, user: user) }
+            errorMessage = nil
+            await refresh()
+        } catch { errorMessage = error.localizedDescription }
+        isLoading = false
+    }
+
+    func makeInvitation() async {
+        guard let group, let live = repository as? FirebasePrayerRepository else { return }
+        do { inviteCode = try await live.createInvitation(groupID: group.id) }
+        catch { errorMessage = error.localizedDescription }
+    }
+    #endif
+
     func refresh() async {
         guard let user else { return }
         isLoading = true
@@ -38,7 +77,8 @@ final class AppModel {
             if !others.contains(where: { $0.id == selectedMemberID }) {
                 selectedMemberID = others.first?.id ?? ""
             }
-        } catch { errorMessage = error.localizedDescription }
+        } catch WithError.membershipRequired { group = nil }
+        catch { errorMessage = error.localizedDescription }
     }
 
     var others: [GroupMember] { group?.members.filter { $0.id != user?.id } ?? [] }

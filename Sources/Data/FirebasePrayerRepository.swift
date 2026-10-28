@@ -4,9 +4,59 @@ import FirebaseCore
 import FirebaseAuth
 import FirebaseFirestore
 
-/// Live adapter scaffold. Invitations, account deletion, and realtime listeners remain integration work.
+/// Spark-plan adapter. Group membership is checked by Firestore rules in atomic batches.
 @MainActor
 final class FirebasePrayerRepository: PrayerRepository {
+    private var db: Firestore { get throws { try database() } }
+
+    func createGroup(name: String, user: AppUser) async throws {
+        guard !name.isEmpty, name.count <= 60 else { throw GroupError.invalidName }
+        let db = try db
+        let group = db.collection("groups").document()
+        let batch = db.batch()
+        batch.setData(["name": name, "ownerID": user.id, "createdAt": FieldValue.serverTimestamp()], forDocument: group)
+        batch.setData(["displayName": user.displayName, "inviteID": "", "joinedAt": FieldValue.serverTimestamp()], forDocument: group.collection("members").document(user.id))
+        batch.setData(["joinedAt": FieldValue.serverTimestamp()], forDocument: db.collection("users").document(user.id).collection("groupMemberships").document(group.documentID))
+        try await batch.commit()
+    }
+
+    func joinGroup(code: String, user: AppUser) async throws {
+        guard code.count == 32, code.allSatisfy({ $0.isHexDigit }) else { throw GroupError.invalidInvitation }
+        let db = try db
+        let invitation = try await db.collection("invitations").document(code.lowercased()).getDocument()
+        guard let data = invitation.data(), let groupID = data["groupID"] as? String,
+              let expires = data["expiresAt"] as? Timestamp, expires.dateValue() > Date() else { throw GroupError.invalidInvitation }
+        let batch = db.batch()
+        let member = db.collection("groups").document(groupID).collection("members").document(user.id)
+        batch.setData(["displayName": user.displayName, "inviteID": code.lowercased(), "joinedAt": FieldValue.serverTimestamp()], forDocument: member)
+        batch.setData(["joinedAt": FieldValue.serverTimestamp()], forDocument: db.collection("users").document(user.id).collection("groupMemberships").document(groupID))
+        try await batch.commit()
+    }
+
+    func createInvitation(groupID: String) async throws -> String {
+        let db = try db
+        guard let userID = Auth.auth().currentUser?.uid else { throw GroupError.invalidInvitation }
+        let code = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
+        try await db.collection("invitations").document(code).setData([
+            "groupID": groupID, "ownerID": userID, "createdAt": FieldValue.serverTimestamp(),
+            "expiresAt": Timestamp(date: Date().addingTimeInterval(7 * 24 * 60 * 60))
+        ])
+        return code
+    }
+
+    func revokeInvitation(code: String) async throws {
+        try await db.collection("invitations").document(code).delete()
+    }
+
+    enum GroupError: LocalizedError {
+        case invalidName, invalidInvitation
+        var errorDescription: String? {
+            switch self {
+            case .invalidName: return "Choose a group name between 1 and 60 characters."
+            case .invalidInvitation: return "This invitation is invalid or has expired. Ask your group leader for a new one."
+            }
+        }
+    }
     private func database() throws -> Firestore {
         guard FirebaseApp.app() != nil else { throw WithError.missingConfiguration }
         return Firestore.firestore()
@@ -28,6 +78,7 @@ final class FirebasePrayerRepository: PrayerRepository {
         var prayers: [Prayer] = []
         for document in prayerDocuments.documents {
             let data = document.data()
+            if data["deleted"] as? Bool == true { continue }
             guard let authorID = data["authorID"] as? String, let body = data["body"] as? String,
                   let timestamp = data["createdAt"] as? Timestamp else { continue }
             let updateDocuments = try await document.reference.collection("updates").order(by: "createdAt").getDocuments()
@@ -46,7 +97,7 @@ final class FirebasePrayerRepository: PrayerRepository {
     func createPrayer(groupID: String, authorID: String, body: String) async throws {
         let db = try database()
         _ = try await db.collection("groups").document(groupID).collection("prayers").addDocument(data: [
-            "authorID": authorID, "body": body, "createdAt": FieldValue.serverTimestamp()
+            "authorID": authorID, "body": body, "createdAt": FieldValue.serverTimestamp(), "deleted": false
         ])
     }
 
@@ -56,8 +107,9 @@ final class FirebasePrayerRepository: PrayerRepository {
     }
 
     func deletePrayer(groupID: String, prayerID: String, authorID: String) async throws {
-        // Deleting only the parent leaves subcollections behind. Require a server-side recursive delete.
-        throw LiveIntegrationError.serverDeletionRequired
+        // Hide the entire thread and erase its main text; rules also close access to children.
+        try await db.collection("groups").document(groupID).collection("prayers").document(prayerID)
+            .updateData(["body": "", "deleted": true])
     }
 
     func addUpdate(groupID: String, prayerID: String, authorID: String, body: String) async throws {
@@ -74,9 +126,5 @@ final class FirebasePrayerRepository: PrayerRepository {
         else { try await reference.delete() }
     }
 
-    enum LiveIntegrationError: LocalizedError {
-        case serverDeletionRequired
-        var errorDescription: String? { "Live deletion needs the server cleanup endpoint. Use the demo scheme until that integration is complete." }
-    }
 }
 #endif

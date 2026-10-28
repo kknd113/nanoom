@@ -152,6 +152,26 @@ struct GroupSettingsView: View {
             }
             if model.isDemo {
                 Section { Text("This is a local demo. Invitations, account management, and live notifications are not connected.").font(.footnote) }
+            } else {
+                #if FIREBASE_ENABLED
+                Section("Invite your people") {
+                    Button("Create invitation") { Task { await model.makeInvitation() } }
+                    if let code = model.inviteCode {
+                        Text(code).font(.caption.monospaced()).textSelection(.enabled)
+                        ShareLink("Share invitation code", item: "Join my Nanoom prayer circle. Open Nanoom, choose Join a group, and enter this code: \(code)\nValid for 7 days.")
+                        Button("Revoke invitation", role: .destructive) {
+                            Task {
+                                do { try await FirebasePrayerRepository().revokeInvitation(code: code); model.inviteCode = nil }
+                                catch { model.errorMessage = error.localizedDescription }
+                            }
+                        }
+                    }
+                    Text("Only the group creator can issue invitations. Codes expire after 7 days.").font(.footnote).foregroundStyle(.secondary)
+                }
+                Section {
+                    Button("Sign out", role: .destructive) { dismiss(); model.signOut() }
+                }
+                #endif
             }
         }
         .navigationTitle(model.group?.name ?? "Your circle")

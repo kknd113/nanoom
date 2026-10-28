@@ -1,52 +1,94 @@
+// Prototype schema: groups {name:1..60, ownerID:uid, createdAt:timestamp};
+// members {displayName:1..40, inviteID:empty or 32 hex, joinedAt:timestamp};
+// private membership indexes {joinedAt:timestamp}; invitations {groupID,ownerID,createdAt,expiresAt};
+// prayers {authorID,body:0..2000,createdAt,deleted:bool}; updates {authorID,body:1..2000,createdAt};
+// reactions {createdAt:timestamp}. Identity and creation times are immutable.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
-    function member(groupID) {
-      return signedIn() && exists(/databases/$(database)/documents/groups/$(groupID)/members/$(request.auth.uid));
+    function own(uid) { return signedIn() && request.auth.uid == uid; }
+    function text(value, max) { return value is string && value.size() > 0 && value.size() <= max; }
+    function member(gid) { return signedIn() && exists(/databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid)); }
+    function owner(gid) { return signedIn() && get(/databases/$(database)/documents/groups/$(gid)).data.ownerID == request.auth.uid; }
+    function active(gid, pid) { return get(/databases/$(database)/documents/groups/$(gid)/prayers/$(pid)).data.deleted == false; }
+    function author(gid, pid) { return get(/databases/$(database)/documents/groups/$(gid)/prayers/$(pid)).data.authorID == request.auth.uid; }
+    function validGroup(d) {
+      return d.keys().hasAll(['name','ownerID','createdAt']) && d.keys().hasOnly(['name','ownerID','createdAt'])
+        && text(d.name,60) && text(d.ownerID,128) && d.createdAt is timestamp;
     }
-    function author(groupID, prayerID) {
-      return signedIn() && get(/databases/$(database)/documents/groups/$(groupID)/prayers/$(prayerID)).data.authorID == request.auth.uid;
+    function validMember(d) {
+      return d.keys().hasAll(['displayName','inviteID','joinedAt']) && d.keys().hasOnly(['displayName','inviteID','joinedAt'])
+        && text(d.displayName,40) && d.inviteID is string && d.inviteID.size() <= 32 && d.joinedAt is timestamp;
     }
-    function validBody(data) { return data.body is string && data.body.size() > 0 && data.body.size() <= 2000; }
-
-    match /users/{userID}/groupMemberships/{groupID} {
-      allow read: if signedIn() && request.auth.uid == userID;
-      allow write: if false; // Trusted server creates this together with membership.
+    function validInvite(d) {
+      return d.keys().hasAll(['groupID','ownerID','createdAt','expiresAt']) && d.keys().hasOnly(['groupID','ownerID','createdAt','expiresAt'])
+        && text(d.groupID,128) && text(d.ownerID,128) && d.createdAt is timestamp && d.expiresAt is timestamp;
     }
-    match /groups/{groupID} {
-      allow read: if member(groupID);
-      allow write: if false;
-      match /members/{userID} {
-        allow read: if member(groupID);
-        allow write: if false;
+    function canJoin(gid, token) {
+      let invitation = get(/databases/$(database)/documents/invitations/$(token)).data;
+      return token.matches('^[a-f0-9]{32}$') && invitation.groupID == gid && invitation.expiresAt > request.time;
+    }
+    function validPrayer(d) {
+      return d.keys().hasAll(['authorID','body','createdAt','deleted']) && d.keys().hasOnly(['authorID','body','createdAt','deleted'])
+        && text(d.authorID,128) && d.createdAt is timestamp && d.deleted is bool
+        && ((d.deleted == false && text(d.body,2000)) || (d.deleted == true && d.body == ''));
+    }
+    function validUpdate(d) {
+      return d.keys().hasAll(['authorID','body','createdAt']) && d.keys().hasOnly(['authorID','body','createdAt'])
+        && text(d.authorID,128) && text(d.body,2000) && d.createdAt is timestamp;
+    }
+    match /invitations/{token} {
+      allow get: if signedIn() && resource.data.expiresAt > request.time;
+      allow list: if false; // Possession of a random 128-bit code is required.
+      allow create: if signedIn() && token.matches('^[a-f0-9]{32}$') && validInvite(request.resource.data)
+        && request.resource.data.ownerID == request.auth.uid && owner(request.resource.data.groupID)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt <= request.time + duration.value(7,'d');
+      allow delete: if signedIn() && resource.data.ownerID == request.auth.uid;
+      allow update: if false;
+    }
+    match /users/{uid}/groupMemberships/{gid} {
+      allow read: if own(uid);
+      allow create: if own(uid) && request.resource.data.keys().hasAll(['joinedAt']) && request.resource.data.keys().hasOnly(['joinedAt'])
+        && request.resource.data.joinedAt == request.time
+        && getAfter(/databases/$(database)/documents/groups/$(gid)/members/$(uid)).data.joinedAt == request.time;
+      allow update, delete: if false;
+    }
+    match /groups/{gid} {
+      allow read: if member(gid);
+      allow create: if signedIn() && validGroup(request.resource.data) && request.resource.data.ownerID == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && getAfter(/databases/$(database)/documents/groups/$(gid)/members/$(request.auth.uid)).data.joinedAt == request.time;
+      allow update, delete: if false;
+      match /members/{uid} {
+        allow read: if member(gid);
+        allow create: if own(uid) && validMember(request.resource.data) && request.resource.data.joinedAt == request.time
+          && ((!exists(/databases/$(database)/documents/groups/$(gid))
+            && getAfter(/databases/$(database)/documents/groups/$(gid)).data.ownerID == uid && request.resource.data.inviteID == '')
+            || canJoin(gid,request.resource.data.inviteID));
+        allow update, delete: if false;
       }
-      match /prayers/{prayerID} {
-        allow read: if member(groupID);
-        allow create: if member(groupID)
-          && request.resource.data.keys().hasOnly(['authorID', 'body', 'createdAt'])
-          && request.resource.data.authorID == request.auth.uid
-          && request.resource.data.createdAt == request.time
-          && validBody(request.resource.data);
-        allow update: if member(groupID) && resource.data.authorID == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body'])
-          && validBody(request.resource.data);
-        allow delete: if false; // Server must delete subcollections as well.
-        match /updates/{updateID} {
-          allow read: if member(groupID);
-          allow create: if member(groupID) && author(groupID, prayerID)
-            && request.resource.data.keys().hasOnly(['authorID', 'body', 'createdAt'])
-            && request.resource.data.authorID == request.auth.uid
-            && request.resource.data.createdAt == request.time
-            && validBody(request.resource.data);
+      match /prayers/{pid} {
+        allow read: if member(gid);
+        allow create: if member(gid) && validPrayer(request.resource.data) && request.resource.data.authorID == request.auth.uid
+          && request.resource.data.createdAt == request.time && request.resource.data.deleted == false;
+        allow update: if member(gid) && resource.data.authorID == request.auth.uid && resource.data.deleted == false
+          && validPrayer(request.resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body','deleted']);
+        allow delete: if false;
+        match /updates/{id} {
+          allow read: if member(gid) && active(gid,pid);
+          allow create: if member(gid) && active(gid,pid) && author(gid,pid) && validUpdate(request.resource.data)
+            && request.resource.data.authorID == request.auth.uid && request.resource.data.createdAt == request.time;
           allow update, delete: if false;
         }
-        match /reactions/{userID} {
-          allow read: if member(groupID);
-          allow create: if member(groupID) && request.auth.uid == userID && !author(groupID, prayerID)
-            && request.resource.data.keys().hasOnly(['createdAt'])
+        match /reactions/{uid} {
+          allow read: if member(gid) && active(gid,pid);
+          allow create: if own(uid) && member(gid) && active(gid,pid) && !author(gid,pid)
+            && request.resource.data.keys().hasAll(['createdAt']) && request.resource.data.keys().hasOnly(['createdAt'])
             && request.resource.data.createdAt == request.time;
-          allow delete: if member(groupID) && request.auth.uid == userID;
+          allow delete: if own(uid) && member(gid) && active(gid,pid);
           allow update: if false;
         }
       }

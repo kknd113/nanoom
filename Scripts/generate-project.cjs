@@ -79,4 +79,4 @@ for(const [name,values]of Object.entries(colors)){
  const rgb=hex=>({'color-space':'srgb',components:{red:String(parseInt(hex.slice(0,2),16)/255),green:String(parseInt(hex.slice(2,4),16)/255),blue:String(parseInt(hex.slice(4,6),16)/255),alpha:'1.000'}});
  fs.writeFileSync(path.join(dir,'Contents.json'),JSON.stringify({colors:[{idiom:'universal',color:rgb(values[0])},{idiom:'universal',appearances:[{appearance:'luminosity',value:'dark'}],color:rgb(values[1])}],info:{author:'xcode',version:1}},null,2));
 }
-project(false);project(true);console.log('Generated With.xcodeproj (no packages) and WithLive.xcodeproj (Firebase 13.1.1).');
+project(false);console.log('Generated With.xcodeproj only. The configured WithLive project must be maintained with native Xcode/Swift tooling.');

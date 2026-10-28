@@ -1,4 +1,5 @@
 {
-  "firestore": { "rules": "firestore.rules" },
+  "firestore": { "rules": "firestore.rules", "database": "(default)", "location": "us-west2", "indexes": "firestore.indexes.json" },
+  "auth": { "providers": { "emailPassword": true } },
   "emulators": { "firestore": { "port": 8080 }, "auth": { "port": 9099 }, "ui": { "enabled": true } }
 }

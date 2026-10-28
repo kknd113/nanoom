@@ -1,6 +1,7 @@
 import SwiftUI
 #if FIREBASE_ENABLED
 import FirebaseCore
+import FirebaseFirestore
 #endif
 
 @main
@@ -11,6 +12,9 @@ struct WithApp: App {
         #if FIREBASE_ENABLED
         if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
             FirebaseApp.configure()
+            let settings = FirestoreSettings()
+            settings.cacheSettings = MemoryCacheSettings()
+            Firestore.firestore().settings = settings
         }
         _model = State(initialValue: AppModel(repository: FirebasePrayerRepository(), isDemo: false))
         #else
@@ -41,19 +45,15 @@ struct RootView: View {
                         }
                 }
             } else if model.user != nil {
-                ContentUnavailableView {
-                    Label("Your circle is next", systemImage: "person.2.circle")
-                } description: {
-                    Text("Your account is ready. Ask your group leader for an invitation. Live invite redemption is the next integration step.")
-                } actions: {
-                    Button("Try again") { Task { await model.refresh() } }
-                    Button("Back", role: .cancel) { model.user = nil }
-                }
+                #if FIREBASE_ENABLED
+                GroupEntryView()
+                #endif
             } else {
                 WelcomeView()
             }
         }
         .background(Color.withPaper.ignoresSafeArea())
+        .task { await model.restoreSession() }
         .sheet(item: $model.composer) { route in PrayerComposerView(route: route).environment(model) }
         .alert("Something needs attention", isPresented: Binding(get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("OK") { model.errorMessage = nil }

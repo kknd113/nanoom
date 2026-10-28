@@ -7,7 +7,7 @@ The initial repository upload does not enable automated builds or distribution. 
 Use GitHub Actions with read-only repository permissions.
 
 - Validate the Xcode project references and plist files.
-- Check that running the project generator produces no tracked changes.
+- Validate the demo generator separately; never regenerate the configured Live project.
 - Build the WithDemo scheme without signing on a macOS runner with an explicitly selected compatible Xcode version.
 - Select an installed iPhone simulator and run WithTests.
 - Keep the demo check independent of Firebase configuration and Apple account credentials.
@@ -25,4 +25,4 @@ Add a separate manual release workflow after the live app, signing identity, and
 - Upload to TestFlight and verify processing status.
 - Keep production deployment and any database rule changes separate from ordinary pull request checks.
 
-The Live target is still an integration scaffold. Invitations, account cleanup, session restoration, and live authorization tests must be completed before distributing it to a real small group.
+The Live target now has working email authentication, private group creation/invitations, session restoration and 43 passing real-cloud authorization checks. Account deletion, group leave/removal, physical cleanup, privacy disclosures and real-device QA remain prerequisites for broader distribution.

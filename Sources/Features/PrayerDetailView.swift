@@ -72,7 +72,7 @@ struct PrayerDetailView: View {
                 }
                 .padding(.horizontal, 26).padding(.top, 14).padding(.bottom, 8).background(.regularMaterial)
             }
-            .confirmationDialog("Delete this prayer and its updates?", isPresented: $deleteConfirmation, titleVisibility: .visible) {
+            .confirmationDialog("Remove this prayer and its updates from your circle?", isPresented: $deleteConfirmation, titleVisibility: .visible) {
                 Button("Delete prayer", role: .destructive) { Task { await model.delete(prayer) } }
             }
         } else {
