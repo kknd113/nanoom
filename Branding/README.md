@@ -23,3 +23,7 @@ Do not change the app name again. Do not add an ornamental cross, dove, praying 
 These are review assets. The shipping wordmark and app icon have not been replaced automatically.
 
 Monochrome masters added for practical review: nanoom-mark-black.svg and nanoom-mark-white.svg. Both preserve the same geometry as the blue master. Use white only on a sufficiently dark field; do not introduce a shadow to make it legible on a pale background. Small-size review should compare the central dot's separation, not just recognition of the outer n.
+
+## Selected direction refined
+
+The user's chosen first direction is developed in [refined-v2/](refined-v2/README.md): lighter/tighter symbol, raised dot, custom outlined wordmark, horizontal lockup and light/dark icon masters. Original sketches remain intact for comparison.
