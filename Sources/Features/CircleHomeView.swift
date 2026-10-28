@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import ImageIO
 
 struct CircleHomeView: View {
     @Environment(AppModel.self) private var model
@@ -145,6 +147,17 @@ struct GroupSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         List {
+            Section("You") {
+                NavigationLink { ProfilePhotoSettingsView() } label: {
+                    HStack {
+                        if let me = model.group?.members.first(where: { $0.id == model.user?.id }) { MemberAvatar(member: me, size: 44) }
+                        VStack(alignment: .leading) {
+                            Text(model.user?.displayName ?? "Your profile")
+                            Text("Profile photo").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
             Section("Your circle") {
                 ForEach(model.group?.members ?? []) { member in
                     HStack { MemberAvatar(member: member, size: 36); Text(member.displayName) }
@@ -154,11 +167,12 @@ struct GroupSettingsView: View {
                 Section { Text("This is a local demo. Invitations, account management, and live notifications are not connected.").font(.footnote) }
             } else {
                 #if FIREBASE_ENABLED
+                if model.group?.ownerID == model.user?.id {
                 Section("Invite your people") {
-                    Button("Create invitation") { Task { await model.makeInvitation() } }
+                    Button(model.makingInvitation ? "Creating link…" : "Create invite link") { Task { await model.makeInvitation() } }.disabled(model.makingInvitation)
                     if let code = model.inviteCode {
-                        Text(code).font(.caption.monospaced()).textSelection(.enabled)
-                        ShareLink("Share invitation code", item: "Join my Nanoom prayer circle. Open Nanoom, choose Join a group, and enter this code: \(code)\nValid for 7 days.")
+
+                        ShareLink("Share invite link", item: InvitationLink.url(code: code), subject: Text("Join my Nanoom circle"), message: Text("A little space to share life and pray together."))
                         Button("Revoke invitation", role: .destructive) {
                             Task {
                                 do { try await FirebasePrayerRepository().revokeInvitation(code: code); model.inviteCode = nil }
@@ -168,6 +182,7 @@ struct GroupSettingsView: View {
                     }
                     Text("Only the group creator can issue invitations. Codes expire after 7 days.").font(.footnote).foregroundStyle(.secondary)
                 }
+                }
                 Section {
                     Button("Sign out", role: .destructive) { dismiss(); model.signOut() }
                 }
@@ -176,5 +191,138 @@ struct GroupSettingsView: View {
         }
         .navigationTitle(model.group?.name ?? "Your circle")
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+    }
+}
+
+struct ProfilePhotoSettingsView: View {
+    @Environment(AppModel.self) private var model
+    @State private var selection: PhotosPickerItem?
+    @State private var cropImage: UIImage?
+    @State private var loading = false
+    @State private var removing = false
+    @State private var issue: String?
+    private var me: GroupMember? { model.group?.members.first { $0.id == model.user?.id } }
+
+    var body: some View {
+        Form {
+            Section {
+                HStack { Spacer(); if let me { MemberAvatar(member: me, size: 104) }; Spacer() }.padding(.vertical, 24)
+                PhotosPicker(selection: $selection, matching: .images) {
+                    Label(me?.photoData == nil ? "Choose a photo" : "Change photo", systemImage: "photo")
+                }.disabled(loading)
+                if me?.photoData != nil {
+                    Button("Remove photo", role: .destructive) { removing = true }.disabled(loading)
+                }
+            } footer: { Text("Optional. Your photo is visible only to this circle. You can change or remove it anytime.") }
+            if loading { Section { ProgressView("Preparing your photo…") } }
+            if let issue { Section { Text(issue).foregroundStyle(.secondary) } }
+        }
+        .navigationTitle("Your photo")
+        .onChange(of: selection) { _, item in
+            guard let item else { return }
+            Task {
+                loading = true; issue = nil
+                defer { loading = false; selection = nil }
+                do {
+                    guard let data = try await item.loadTransferable(type: Data.self),
+                          let source = CGImageSourceCreateWithData(data as CFData, nil),
+                          let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                            kCGImageSourceCreateThumbnailFromImageAlways: true,
+                            kCGImageSourceCreateThumbnailWithTransform: true,
+                            kCGImageSourceThumbnailMaxPixelSize: 1024
+                          ] as CFDictionary) else { issue = "This photo couldn’t be opened. Try another image."; return }
+                    cropImage = UIImage(cgImage: thumbnail)
+                } catch { issue = "This photo couldn’t be opened. Try another image." }
+            }
+        }
+        .sheet(isPresented: Binding(get: { cropImage != nil }, set: { if !$0 { cropImage = nil } })) {
+            if let cropImage {
+                NavigationStack {
+                    AvatarCropView(image: cropImage) { data in await model.saveProfilePhoto(data) }
+                }
+            }
+        }
+        .confirmationDialog("Remove your profile photo?", isPresented: $removing, titleVisibility: .visible) {
+            Button("Remove photo", role: .destructive) {
+                Task { loading = true; _ = await model.saveProfilePhoto(nil); loading = false }
+            }
+        }
+    }
+}
+
+struct AvatarCropView: View {
+    let image: UIImage
+    let save: (Data) async -> Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var zoom: CGFloat = 1
+    @State private var offset = CGSize.zero
+    @GestureState private var pinch: CGFloat = 1
+    @GestureState private var drag = CGSize.zero
+    @State private var saving = false
+    @State private var issue: String?
+
+    private func bounded(_ offset: CGSize, zoom: CGFloat, side: CGFloat) -> CGSize {
+        let base = side / min(image.size.width, image.size.height)
+        let x = max(0, (image.size.width * base * zoom - side) / 2)
+        let y = max(0, (image.size.height * base * zoom - side) / 2)
+        return CGSize(width: min(x, max(-x, offset.width)), height: min(y, max(-y, offset.height)))
+    }
+    var body: some View {
+        GeometryReader { geometry in
+            let side = min(geometry.size.width - 48, 340)
+            let scale = min(4, max(1, zoom * pinch))
+            let position = bounded(CGSize(width: offset.width + drag.width, height: offset.height + drag.height), zoom: scale, side: side)
+            let base = side / min(image.size.width, image.size.height)
+            VStack(spacing: 24) {
+                Spacer()
+                ZStack {
+                    Image(uiImage: image).resizable()
+                        .frame(width: image.size.width * base * scale, height: image.size.height * base * scale)
+                        .offset(position)
+                }.frame(width: side, height: side).clipped().clipShape(Circle())
+                .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 2))
+                .contentShape(Circle())
+                .gesture(DragGesture().updating($drag) { value, state, _ in state = value.translation }
+                    .onEnded { value in offset = bounded(CGSize(width: offset.width + value.translation.width, height: offset.height + value.translation.height), zoom: zoom, side: side) })
+                .simultaneousGesture(MagnificationGesture().updating($pinch) { value, state, _ in state = value }
+                    .onEnded { value in zoom = min(4, max(1, zoom * value)); offset = bounded(offset, zoom: zoom, side: side) })
+                .accessibilityLabel("Photo preview")
+                Text("Drag to position. Pinch to zoom.").font(.subheadline).foregroundStyle(.secondary)
+                Slider(value: $zoom, in: 1...4).accessibilityLabel("Photo zoom").padding(.horizontal, 36)
+                    .onChange(of: zoom) { _, value in offset = bounded(offset, zoom: value, side: side) }
+                if let issue { Text(issue).font(.caption).foregroundStyle(.secondary) }
+                Button {
+                    Task {
+                        saving = true
+                        defer { saving = false }
+                        guard let data = render(side: side) else { issue = "Try a different photo."; return }
+                        if await save(data) { dismiss() }
+                        else { issue = "Your photo couldn’t be saved. Please try again." }
+                    }
+                } label: { if saving { ProgressView() } else { Text("Use photo") } }
+                    .buttonStyle(PrimaryButtonStyle()).disabled(saving)
+                Spacer()
+            }.padding(24).frame(maxWidth: .infinity)
+        }
+        .background(Color.withPaper.ignoresSafeArea())
+        .navigationTitle("Make it yours")
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(saving) } }
+        .interactiveDismissDisabled(saving)
+    }
+    private func render(side: CGFloat) -> Data? {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 256, height: 256), format: format)
+        let position = bounded(offset, zoom: zoom, side: side)
+        let factor = 256 / min(image.size.width, image.size.height) * zoom
+        let width = image.size.width * factor, height = image.size.height * factor
+        let avatar = renderer.image { _ in
+            UIColor.white.setFill(); UIRectFill(CGRect(x: 0, y: 0, width: 256, height: 256))
+            image.draw(in: CGRect(x: (256-width)/2 + position.width * 256/side,
+                                  y: (256-height)/2 + position.height * 256/side, width: width, height: height))
+        }
+        for quality in [0.8, 0.6, 0.4] {
+            if let data = avatar.jpegData(compressionQuality: quality), data.count <= 65_536 { return data }
+        }
+        return nil
     }
 }

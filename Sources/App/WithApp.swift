@@ -37,7 +37,11 @@ struct RootView: View {
     var body: some View {
         @Bindable var model = model
         Group {
-            if model.user != nil && model.group != nil {
+            if model.user != nil && model.pendingInviteCode != nil && !model.isDemo {
+                #if FIREBASE_ENABLED
+                InvitationJoinView(code: model.pendingInviteCode!)
+                #endif
+            } else if model.user != nil && model.group != nil {
                 NavigationStack(path: $model.path) {
                     CircleHomeView()
                         .navigationDestination(for: String.self) { id in
@@ -54,6 +58,7 @@ struct RootView: View {
             }
         }
         .background(Color.withPaper.ignoresSafeArea())
+        .onOpenURL { model.receiveInvitation($0) }
         .task {
             #if DEBUG && FIREBASE_ENABLED && targetEnvironment(simulator)
             if await NativeAuthVerification.runIfRequested() { return }

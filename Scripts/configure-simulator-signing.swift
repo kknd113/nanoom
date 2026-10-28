@@ -10,6 +10,7 @@ for (id, var object) in objects where object["isa"] as? String == "XCBuildConfig
     settings["CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]"] = "YES"
     settings["CODE_SIGN_IDENTITY[sdk=iphonesimulator*]"] = "-"
     settings["CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]"] = "Configuration/WithSimulator.entitlements"
+    settings["INFOPLIST_FILE"] = "Configuration/WithLive-Info.plist"
     if object["name"] as? String == "Debug" {
         settings["SWIFT_ACTIVE_COMPILATION_CONDITIONS"] = "$(inherited) FIREBASE_ENABLED DEBUG"
     }

@@ -32,6 +32,11 @@ struct WelcomeView: View {
                     .font(.caption).foregroundStyle(.secondary)
             } else {
                 #if FIREBASE_ENABLED
+                if model.pendingInviteCode != nil {
+                    Label("Your invitation is ready. Sign in to join.", systemImage: "person.2")
+                        .font(.subheadline).foregroundStyle(Color.withAccent)
+                    Button("Dismiss invitation") { model.clearInvitation() }.font(.caption)
+                }
                 Button { showAccount = true } label: {
                     Label("Continue with email", systemImage: "envelope")
                 }.buttonStyle(PrimaryButtonStyle())
@@ -137,7 +142,7 @@ struct GroupEntryView: View {
                         Text("Join a group").tag(true)
                     }.pickerStyle(.segmented)
                     if joining {
-                        TextField("Invitation code", text: $code).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        TextField("Invitation link or code", text: $code).textInputAutocapitalization(.never).autocorrectionDisabled()
                     } else { TextField("Group name", text: $name) }
                 } footer: { Text("Only people with your invitation can join your private circle.") }
                 Section {
@@ -149,6 +154,45 @@ struct GroupEntryView: View {
             .navigationTitle("Your people")
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Sign out") { model.signOut() } } }
         }
+    }
+}
+#endif
+
+#if FIREBASE_ENABLED
+struct InvitationJoinView: View {
+    @Environment(AppModel.self) private var model
+    let code: String
+    @State private var invitation: GroupInvitation?
+    @State private var issue: String?
+    @State private var loading = true
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Spacer()
+                Image(systemName: "person.2.circle").font(.system(size: 70, weight: .ultraLight)).foregroundStyle(Color.withAccent)
+                if let invitation {
+                    Text("A place in\n\(invitation.groupName)").font(.system(.largeTitle, design: .rounded)).multilineTextAlignment(.center)
+                    Text("Share life. Hold one another in prayer.").foregroundStyle(.secondary)
+                    Text("Invitation expires \(invitation.expiresAt.formatted(date: .abbreviated, time: .omitted)).").font(.caption).foregroundStyle(.secondary)
+                    Button("Join this circle") { Task { await model.enterGroup(name: "", code: code) } }
+                        .buttonStyle(PrimaryButtonStyle()).disabled(model.isLoading)
+                } else if loading { ProgressView("Opening your invitation…") }
+                else {
+                    Text("This invitation couldn’t be opened.").font(.title2)
+                    Text(issue ?? "Ask your group leader for a fresh link.").foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Button("Try again") { Task { await load() } }
+                }
+                Button("Not now") { model.clearInvitation() }.frame(minHeight: 44)
+                Spacer()
+            }.padding(30).background(Color.withPaper.ignoresSafeArea())
+        }
+        .task(id: code) { await load() }
+    }
+    private func load() async {
+        loading = true; issue = nil; invitation = nil
+        defer { loading = false }
+        do { invitation = try await FirebasePrayerRepository().previewInvitation(code: code) }
+        catch { issue = "The link may have expired or been revoked. Ask your group leader for a new invitation." }
     }
 }
 #endif

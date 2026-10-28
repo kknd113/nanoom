@@ -19,6 +19,12 @@ final class DemoPrayerRepository: PrayerRepository {
 
     func loadGroup(userID: String) async throws -> PrayerGroup { group }
 
+    func setProfilePhoto(groupID: String, userID: String, data: Data?) async throws {
+        guard userID == Self.userID, let index = group.members.firstIndex(where: { $0.id == userID }) else { throw WithError.notAuthor }
+        group.members[index].photoData = data
+        persist()
+    }
+
     func createPrayer(groupID: String, authorID: String, body: String) async throws {
         let text = try validated(body)
         group.prayers.insert(Prayer(id: UUID().uuidString, authorID: authorID, body: text,

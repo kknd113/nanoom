@@ -2,6 +2,7 @@
 // members {displayName:1..40, inviteID:empty or 32 hex, joinedAt:timestamp};
 // private membership indexes {joinedAt:timestamp}; invitations {groupID,ownerID,createdAt,expiresAt};
 // prayers {authorID,body:0..2000,createdAt,deleted:bool}; updates {authorID,body:1..2000,createdAt};
+// memberPhotos/{uid} {image:bytes <=65536, updatedAt:timestamp}; only own writes, group-only reads.
 // reactions {createdAt:timestamp}. Identity and creation times are immutable.
 rules_version = '2';
 service cloud.firestore {
@@ -22,8 +23,13 @@ service cloud.firestore {
         && text(d.displayName,40) && d.inviteID is string && d.inviteID.size() <= 32 && d.joinedAt is timestamp;
     }
     function validInvite(d) {
-      return d.keys().hasAll(['groupID','ownerID','createdAt','expiresAt']) && d.keys().hasOnly(['groupID','ownerID','createdAt','expiresAt'])
+      return d.keys().hasAll(['groupID','ownerID','createdAt','expiresAt']) && d.keys().hasOnly(['groupID','groupName','ownerID','createdAt','expiresAt'])
+        && (!('groupName' in d) || text(d.groupName,60))
         && text(d.groupID,128) && text(d.ownerID,128) && d.createdAt is timestamp && d.expiresAt is timestamp;
+    }
+    function validPhoto(d) {
+      return d.keys().hasAll(['image','updatedAt']) && d.keys().hasOnly(['image','updatedAt'])
+        && d.image is bytes && d.image.size() > 0 && d.image.size() <= 65536 && d.updatedAt is timestamp;
     }
     function canJoin(gid, token) {
       let invitation = get(/databases/$(database)/documents/invitations/$(token)).data;
@@ -43,6 +49,7 @@ service cloud.firestore {
       allow list: if false; // Possession of a random 128-bit code is required.
       allow create: if signedIn() && token.matches('^[a-f0-9]{32}$') && validInvite(request.resource.data)
         && request.resource.data.ownerID == request.auth.uid && owner(request.resource.data.groupID)
+        && (!('groupName' in request.resource.data) || request.resource.data.groupName == get(/databases/$(database)/documents/groups/$(request.resource.data.groupID)).data.name)
         && request.resource.data.createdAt == request.time
         && request.resource.data.expiresAt > request.time
         && request.resource.data.expiresAt <= request.time + duration.value(7,'d');
@@ -69,6 +76,12 @@ service cloud.firestore {
             && getAfter(/databases/$(database)/documents/groups/$(gid)).data.ownerID == uid && request.resource.data.inviteID == '')
             || canJoin(gid,request.resource.data.inviteID));
         allow update, delete: if false;
+      }
+      match /memberPhotos/{uid} {
+        allow read: if member(gid);
+        allow create, update: if own(uid) && member(gid) && validPhoto(request.resource.data)
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if own(uid) && member(gid);
       }
       match /prayers/{pid} {
         allow read: if member(gid);

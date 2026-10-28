@@ -18,10 +18,35 @@ final class AppModel {
     var hapticTrigger = 0
     var isDemo: Bool
     var inviteCode: String?
+    var pendingInviteCode: String?
+    var makingInvitation = false
 
     init(repository: any PrayerRepository, isDemo: Bool) {
         self.repository = repository
         self.isDemo = isDemo
+        pendingInviteCode = isDemo ? nil : UserDefaults.standard.string(forKey: "nanoom.pendingInvitation")
+    }
+
+    func receiveInvitation(_ url: URL) {
+        guard let code = InvitationLink.code(from: url) else { errorMessage = "This invitation link isn’t valid."; return }
+        composer = nil
+        pendingInviteCode = code
+        UserDefaults.standard.set(code, forKey: "nanoom.pendingInvitation")
+    }
+
+    func clearInvitation() {
+        pendingInviteCode = nil
+        UserDefaults.standard.removeObject(forKey: "nanoom.pendingInvitation")
+    }
+
+    @discardableResult
+    func saveProfilePhoto(_ data: Data?) async -> Bool {
+        guard let group, let user else { return false }
+        do {
+            try await repository.setProfilePhoto(groupID: group.id, userID: user.id, data: data)
+            await refresh()
+            return true
+        } catch { errorMessage = error.localizedDescription; return false }
     }
 
     func startDemo() async {
@@ -55,6 +80,8 @@ final class AppModel {
         do {
             if code.isEmpty { try await live.createGroup(name: name, user: user) }
             else { try await live.joinGroup(code: code, user: user) }
+            path = []; inviteCode = nil
+            clearInvitation()
             errorMessage = nil
             await refresh()
         } catch { errorMessage = error.localizedDescription }
@@ -63,6 +90,9 @@ final class AppModel {
 
     func makeInvitation() async {
         guard let group, let live = repository as? FirebasePrayerRepository else { return }
+        guard !makingInvitation else { return }
+        makingInvitation = true
+        defer { makingInvitation = false }
         do { inviteCode = try await live.createInvitation(groupID: group.id) }
         catch { errorMessage = error.localizedDescription }
     }

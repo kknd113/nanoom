@@ -1,1 +1,10 @@
-{"indexes": [], "fieldOverrides": []}
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "memberPhotos",
+      "fieldPath": "image",
+      "indexes": []
+    }
+  ]
+}

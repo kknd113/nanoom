@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 extension Color {
     static let withInk = Color("WithInk")
@@ -25,11 +26,16 @@ struct MemberAvatar: View {
     var size: CGFloat = 50
     var selected = false
     var body: some View {
-        Text(member.initial)
+        Group {
+            if let data = member.photoData, let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFill()
+            } else { Text(member.initial) }
+        }
             .font(.system(size: size * 0.34, weight: .medium, design: .rounded))
             .foregroundStyle(Color.withAccent)
             .frame(width: size, height: size)
             .background(Color.withSoft, in: Circle())
+            .clipShape(Circle())
             .overlay(Circle().stroke(Color.withPaper, lineWidth: 5))
             .overlay(Circle().stroke(selected ? Color.withAccent : Color.withInk.opacity(0.12), lineWidth: selected ? 2 : 1))
             .accessibilityHidden(true)

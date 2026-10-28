@@ -41,3 +41,61 @@ final class DemoPrayerRepositoryTests: XCTestCase {
         XCTAssertEqual(group.prayers.first { $0.id == "sample-anna" }?.prayedBy.count, 1)
     }
 }
+
+@MainActor
+final class InvitationAndPhotoTests: XCTestCase {
+    func testInvitationLinksRoundTripAndRejectUntrustedInputs() {
+        let code = "0123456789abcdef0123456789abcdef"
+        XCTAssertEqual(InvitationLink.code(from: InvitationLink.url(code: code)), code)
+        XCTAssertEqual(InvitationLink.code(from: URL(string: "nanoom://join?code=\(code)")!), code)
+        XCTAssertEqual(InvitationLink.code(fromInput: "  \(InvitationLink.url(code: code))  "), code)
+        for input in ["https://evil.example/join#\(code)", "http://nanoom-kknd113.web.app/join#\(code)",
+                      "https://nanoom-kknd113.web.app/other#\(code)", "nanoom://join?code=\(code)&code=\(code)",
+                      "nanoom://join?code=short", "nanoom://other?code=\(code)",
+                      "https://nanoom-kknd113.web.app/join?tracking=1#\(code)"] {
+            XCTAssertNil(InvitationLink.code(from: URL(string: input)!), input)
+        }
+    }
+
+    func testOwnPhotoPersistsAndCanBeRemoved() async throws {
+        let suite = "nanoom.photo.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let data = Data([1, 2, 3])
+        let repository = DemoPrayerRepository(defaults: defaults)
+        try await repository.setProfilePhoto(groupID: "grace-demo", userID: DemoPrayerRepository.userID, data: data)
+        let reloaded = DemoPrayerRepository(defaults: defaults)
+        let saved = try await reloaded.loadGroup(userID: DemoPrayerRepository.userID)
+        XCTAssertEqual(saved.members.first { $0.id == DemoPrayerRepository.userID }?.photoData, data)
+        try await reloaded.setProfilePhoto(groupID: "grace-demo", userID: DemoPrayerRepository.userID, data: nil)
+        let removed = try await reloaded.loadGroup(userID: DemoPrayerRepository.userID)
+        XCTAssertNil(removed.members.first { $0.id == DemoPrayerRepository.userID }?.photoData)
+    }
+
+    func testPhotoCannotChangeAnotherMember() async throws {
+        let repository = DemoPrayerRepository(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        do {
+            try await repository.setProfilePhoto(groupID: "grace-demo", userID: "anna", data: Data([1]))
+            XCTFail("Another member photo must not be writable")
+        } catch WithError.notAuthor {} catch { XCTFail("Unexpected error: \(error)") }
+    }
+}
+
+@MainActor
+final class InvitationPendingStateTests: XCTestCase {
+    func testInvitationSurvivesLoginAndAppModelRecreation() {
+        let key = "nanoom.pendingInvitation"
+        let previous = UserDefaults.standard.object(forKey: key)
+        defer {
+            if let previous { UserDefaults.standard.set(previous, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
+        let code = "0123456789abcdef0123456789abcdef"
+        let model = AppModel(repository: DemoPrayerRepository(), isDemo: false)
+        model.receiveInvitation(InvitationLink.url(code: code))
+        let restored = AppModel(repository: DemoPrayerRepository(), isDemo: false)
+        XCTAssertEqual(restored.pendingInviteCode, code)
+        restored.clearInvitation()
+        XCTAssertNil(AppModel(repository: DemoPrayerRepository(), isDemo: false).pendingInviteCode)
+    }
+}

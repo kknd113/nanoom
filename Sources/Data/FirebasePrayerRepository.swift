@@ -18,27 +18,35 @@ final class FirebasePrayerRepository: PrayerRepository {
         batch.setData(["displayName": user.displayName, "inviteID": "", "joinedAt": FieldValue.serverTimestamp()], forDocument: group.collection("members").document(user.id))
         batch.setData(["joinedAt": FieldValue.serverTimestamp()], forDocument: db.collection("users").document(user.id).collection("groupMemberships").document(group.documentID))
         try await batch.commit()
+        UserDefaults.standard.set(group.documentID, forKey: "nanoom.activeGroup.\(user.id)")
     }
 
     func joinGroup(code: String, user: AppUser) async throws {
-        guard code.count == 32, code.allSatisfy({ $0.isHexDigit }) else { throw GroupError.invalidInvitation }
+        guard let token = InvitationLink.code(fromInput: code) else { throw GroupError.invalidInvitation }
         let db = try db
-        let invitation = try await db.collection("invitations").document(code.lowercased()).getDocument()
-        guard let data = invitation.data(), let groupID = data["groupID"] as? String,
-              let expires = data["expiresAt"] as? Timestamp, expires.dateValue() > Date() else { throw GroupError.invalidInvitation }
+        let invitation = try await previewInvitation(code: token)
+        let groupID = invitation.groupID
+        let existing = try await db.collection("users").document(user.id).collection("groupMemberships").document(groupID).getDocument()
+        if existing.exists {
+            UserDefaults.standard.set(groupID, forKey: "nanoom.activeGroup.\(user.id)")
+            return
+        }
         let batch = db.batch()
         let member = db.collection("groups").document(groupID).collection("members").document(user.id)
-        batch.setData(["displayName": user.displayName, "inviteID": code.lowercased(), "joinedAt": FieldValue.serverTimestamp()], forDocument: member)
+        batch.setData(["displayName": user.displayName, "inviteID": token, "joinedAt": FieldValue.serverTimestamp()], forDocument: member)
         batch.setData(["joinedAt": FieldValue.serverTimestamp()], forDocument: db.collection("users").document(user.id).collection("groupMemberships").document(groupID))
         try await batch.commit()
+        UserDefaults.standard.set(groupID, forKey: "nanoom.activeGroup.\(user.id)")
     }
 
     func createInvitation(groupID: String) async throws -> String {
         let db = try db
         guard let userID = Auth.auth().currentUser?.uid else { throw GroupError.invalidInvitation }
+        let group = try await db.collection("groups").document(groupID).getDocument()
+        guard let groupName = group.data()?["name"] as? String else { throw WithError.noGroup }
         let code = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         try await db.collection("invitations").document(code).setData([
-            "groupID": groupID, "ownerID": userID, "createdAt": FieldValue.serverTimestamp(),
+            "groupID": groupID, "groupName": groupName, "ownerID": userID, "createdAt": FieldValue.serverTimestamp(),
             "expiresAt": Timestamp(date: Date().addingTimeInterval(7 * 24 * 60 * 60))
         ])
         return code
@@ -48,10 +56,27 @@ final class FirebasePrayerRepository: PrayerRepository {
         try await db.collection("invitations").document(code).delete()
     }
 
+    func previewInvitation(code: String) async throws -> GroupInvitation {
+        guard let token = InvitationLink.validCode(code) else { throw GroupError.invalidInvitation }
+        let snapshot = try await db.collection("invitations").document(token).getDocument()
+        guard let data = snapshot.data(), let groupID = data["groupID"] as? String,
+              let expires = data["expiresAt"] as? Timestamp, expires.dateValue() > Date() else { throw GroupError.invalidInvitation }
+        return GroupInvitation(groupID: groupID, groupName: data["groupName"] as? String ?? "Your prayer circle", expiresAt: expires.dateValue())
+    }
+
+    func setProfilePhoto(groupID: String, userID: String, data: Data?) async throws {
+        let reference = try db.collection("groups").document(groupID).collection("memberPhotos").document(userID)
+        if let data {
+            guard !data.isEmpty, data.count <= 65_536 else { throw GroupError.invalidPhoto }
+            try await reference.setData(["image": data, "updatedAt": FieldValue.serverTimestamp()])
+        } else { try await reference.delete() }
+    }
+
     enum GroupError: LocalizedError {
-        case invalidName, invalidInvitation
+        case invalidName, invalidInvitation, invalidPhoto
         var errorDescription: String? {
             switch self {
+            case .invalidPhoto: return "This photo couldn’t be saved. Try another image."
             case .invalidName: return "Choose a group name between 1 and 60 characters."
             case .invalidInvitation: return "This invitation is invalid or has expired. Ask your group leader for a new one."
             }
@@ -64,15 +89,27 @@ final class FirebasePrayerRepository: PrayerRepository {
 
     func loadGroup(userID: String) async throws -> PrayerGroup {
         let db = try database()
-        let memberships = try await db.collection("users").document(userID).collection("groupMemberships").limit(to: 1).getDocuments()
-        guard let membership = memberships.documents.first else { throw WithError.membershipRequired }
-        let reference = db.collection("groups").document(membership.documentID)
+        let memberships = db.collection("users").document(userID).collection("groupMemberships")
+        let groupID: String
+        if let preferred = UserDefaults.standard.string(forKey: "nanoom.activeGroup.\(userID)"),
+           try await memberships.document(preferred).getDocument().exists {
+            groupID = preferred
+        } else {
+            guard let first = try await memberships.limit(to: 1).getDocuments().documents.first else { throw WithError.membershipRequired }
+            groupID = first.documentID
+        }
+        let reference = db.collection("groups").document(groupID)
         let groupDocument = try await reference.getDocument()
         guard let name = groupDocument.data()?["name"] as? String else { throw WithError.noGroup }
         let memberDocuments = try await reference.collection("members").getDocuments()
+        let photos = try await reference.collection("memberPhotos").getDocuments()
+        let photoData = Dictionary(uniqueKeysWithValues: photos.documents.compactMap { doc -> (String, Data)? in
+            guard let image = doc.data()["image"] as? Data else { return nil }
+            return (doc.documentID, image)
+        })
         let members = memberDocuments.documents.compactMap { doc -> GroupMember? in
             guard let name = doc.data()["displayName"] as? String else { return nil }
-            return GroupMember(id: doc.documentID, displayName: name)
+            return GroupMember(id: doc.documentID, displayName: name, photoData: photoData[doc.documentID])
         }.sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
         let prayerDocuments = try await reference.collection("prayers").order(by: "createdAt", descending: true).limit(to: 100).getDocuments()
         var prayers: [Prayer] = []
@@ -91,7 +128,7 @@ final class FirebasePrayerRepository: PrayerRepository {
                                   createdAt: timestamp.dateValue(), updates: updates,
                                   prayedBy: Set(reactionDocuments.documents.map(\.documentID))))
         }
-        return PrayerGroup(id: membership.documentID, name: name, members: members, prayers: prayers)
+        return PrayerGroup(id: groupID, name: name, members: members, prayers: prayers, ownerID: groupDocument.data()?["ownerID"] as? String)
     }
 
     func createPrayer(groupID: String, authorID: String, body: String) async throws {

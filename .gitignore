@@ -8,6 +8,7 @@ Configuration/GoogleService-Info.plist
 node_modules/
 firebase-debug.log
 firestore-debug.log
+.firebase/
 *.p8
 *.p12
 *.mobileprovision

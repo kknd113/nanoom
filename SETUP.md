@@ -4,7 +4,7 @@ Configured October 27, 2026. Firebase project `nanoom-kknd113`; iOS app `1:17499
 
 ## Local run
 
-Open WithLive.xcodeproj and Run WithLive on an installed iPhone simulator. This uses the real cloud service. Continue with email → create account → create group. A second account can join using a creator-issued code from group settings. Pull down to fetch other people's changes. Quit/relaunch restores the Firebase account session.
+Open WithLive.xcodeproj and Run WithLive on an installed iPhone simulator. This uses the real cloud service. Continue with email → create account → create group. A second account can join using a creator-issued link from group settings. The HTTPS page hands off through nanoom://join?code=…; after sign-in the app shows a group preview and explicit Join button. Pull down to fetch other people's changes. Quit/relaunch restores the Firebase account session.
 
 The Firebase configuration at `Configuration/GoogleService-Info.plist` is intentionally Git-ignored. On another machine, authenticate with the Firebase CLI and download it:
 
@@ -45,7 +45,7 @@ No Cloud Functions, SMS or billing-dependent services were provisioned. Basic gr
 
 ## Verification
 
-43 real-cloud checks passed using synthetic accounts. Backend/tests/live-smoke.mjs accepts FIREBASE_CONFIG JSON and CLEANUP_FILE environment variables and requires the Firebase JS client SDK. It creates a uniquely named `verification-*` group, uses no real prayer data, never sends email and deletes its Auth accounts in finally. Remove the reported synthetic group and private membership-index records with trusted Firebase CLI `firestore:delete <path> --recursive --force` after a run. Do not run this against user data or substitute existing user IDs.
+58 real-cloud checks passed using synthetic accounts. Backend/tests/live-smoke.mjs accepts FIREBASE_CONFIG JSON and CLEANUP_FILE environment variables and requires the Firebase JS client SDK. It creates a uniquely named `verification-*` group, uses no real prayer data, never sends email and deletes its Auth accounts in finally. Remove the reported synthetic group and private membership-index records with trusted Firebase CLI `firestore:delete <path> --recursive --force` after a run. Do not run this against user data or substitute existing user IDs.
 
 Covered: real app queries, atomic group creation/join, invite expiry constraints and revocation, outsider/unauthenticated access, fake membership index, private user records, ownership spoofing, immutable fields, unknown/missing fields, create/update length/type validation, append-only author updates, reaction duplication/self-reaction, deleted/orphan thread access and revival denial. No counters, role transitions, arrays or user-controlled external paths exist in this schema. These checks do not prove abuse resistance or exhaustively prove security.
 
@@ -60,3 +60,17 @@ I've set up prototype Security Rules to keep the data in Firestore safe. They ar
 - Live private drafts, real-device/offline QA, final icon/privacy disclosures and store readiness.
 
 Auth state persists securely through the SDK. Firestore persistence is memory-only to avoid retaining prayer content on disk; signing out clears app-visible group state. No service-account credentials, login tokens or passwords belong in Git.
+
+## Invitation links and profile photos
+
+Share URLs use `https://nanoom-kknd113.web.app/join#<token>`. The token stays in the fragment, so it is not sent in Hosting requests or referrers. The static page has no analytics, third-party assets or database requests. It provides an explicit Open Nanoom link to `nanoom://join?code=<token>`. Links do not bypass authentication or the explicit Join confirmation. Invalid, expired and revoked tokens fail on the server.
+
+This is the installed-app handoff available without paid Apple capabilities. Universal Links that open directly from HTTPS require a real Apple team/app association and remain a later distribution step. No deferred-install handoff is claimed: a person who has not installed Nanoom must obtain the private test build and reopen the invitation.
+
+Only WithLive registers the nanoom URL scheme, through Configuration/WithLive-Info.plist. WithDemo uses the separate base Info.plist and must not intercept real invites. The exact app host/path and token format are allowlisted; arbitrary URLs and duplicate token parameters are rejected. Pending invitation tokens persist until explicit join or cancellation; they are not prayer content.
+
+Profile photos live at groups/{groupID}/memberPhotos/{uid}, separate from member identity documents. Only members may read them, and only the member matching the document UID may create/update/delete them. Photos are optional and per circle. The native picker grants access only to selected items. ImageIO downsamples and normalizes orientation, then a crop editor renders a metadata-free 256px JPEG no larger than 64 KiB. The UI shows initials if no decodable image exists. Rules enforce byte type, maximum size, schema and timestamps; they do not inspect JPEG contents. Images are excluded from Firestore indexing.
+
+Small avatars use existing Spark Firestore rather than provisioning Cloud Storage, which currently requires Blaze. This is suitable for the initial small-circle pilot; image transfer still counts against the project's normal Firestore quotas. Reassess storage and lazy photo loading before scaling. Photos remain access-controlled, not end-to-end encrypted.
+
+Deployed classic Hosting source: Backend/Hosting. To deploy link-page changes from Backend: `npx -y firebase-tools@latest deploy --only hosting --project nanoom-kknd113`.
