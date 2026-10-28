@@ -20,10 +20,18 @@ Build:
 ```sh
 xcodebuild -project WithLive.xcodeproj -scheme WithLive -configuration Debug \
   -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath work/LiveDerivedData CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath work/LiveDerivedData build
 ```
 
 The local sample remains available separately as With.xcodeproj / WithDemo. Scripts/generate-project.cjs only regenerates that demo project; the configured Live project is maintained through native Xcode/Swift tooling.
+
+## Simulator signing and Keychain
+
+The Live simulator build must remain locally signed. Do **not** pass `CODE_SIGNING_ALLOWED=NO`: that removes the identity/Keychain entitlements Firebase Auth needs to persist sessions, producing `SecItemCopyMatching (-34018)` / Firebase error 17995. This does not require a paid Apple membership.
+
+`Configuration/WithSimulator.entitlements` scopes Keychain access to the app's own bundle identifier. Conditional simulator build settings enable ad-hoc signing and this entitlement file. Physical-device builds still use the chosen development team and normal provisioning. `swift Scripts/configure-simulator-signing.swift` reapplies these settings using native plist APIs.
+
+Debug simulator builds include an opt-in native Firebase verification. On a simulator with no account signed in, launch the app with `--verify-native-auth-create` to create a disposable synthetic account, sign out and sign back in. Wait for the `NANOOM_AUTH_CHECK PASS` log. Then terminate and relaunch with `--verify-native-auth-restore-and-clean`; it checks that the synthetic session survived process restart and deletes only that synthetic account. Normal accounts are never signed out or deleted by this verification. These switches are excluded from Release and physical-device builds.
 
 ## Backend configuration
 

@@ -24,6 +24,7 @@ Backend: **nanoom-kknd113**, Firebase Spark, Firestore Standard `(default)`, **u
 
 - Xcode 27.1 / Swift 6.4 builds the real **WithLive** app with Firebase Apple SDK **13.1.1**.
 - Installed and launched on iPhone 18 Pro / iOS 27.0. Native email onboarding observed.
+- Fixed missing simulator Keychain entitlements (Firebase 17995 / OSStatus -34018) by enabling app-scoped local signing. Native Firebase account creation, sign-out/sign-in and session restoration across process restart were verified; the synthetic account was deleted.
 - **43 checks against the actual cloud backend** passed: multi-account sharing, invitation join/revocation, author ownership, schema/size/timestamp validation, reaction uniqueness, unauthenticated/outsider denial, deleted-thread denial.
 - Synthetic verification accounts and their test group/index records were cleaned up.
 - The separate WithDemo native repository suite previously passed all three tests; it remains available in With.xcodeproj without network dependencies.

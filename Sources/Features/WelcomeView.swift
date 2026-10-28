@@ -104,7 +104,11 @@ struct EmailAccountView: View {
             }
             await model.signedIn(id: result.user.uid, name: result.user.displayName ?? "Friend")
             dismiss()
-        } catch { message = error.localizedDescription }
+        } catch {
+            if (error as NSError).code == AuthErrorCode.emailAlreadyInUse.rawValue {
+                message = "An account already exists with this email. Choose Sign in to continue."
+            } else { message = error.localizedDescription }
+        }
     }
 
     private func resetPassword() async {

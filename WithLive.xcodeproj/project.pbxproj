@@ -58,6 +58,12 @@
 			<dict>
 				<key>ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME</key>
 				<string>WithAccent</string>
+				<key>CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]</key>
+				<string>YES</string>
+				<key>CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]</key>
+				<string>Configuration/WithSimulator.entitlements</string>
+				<key>CODE_SIGN_IDENTITY[sdk=iphonesimulator*]</key>
+				<string>-</string>
 				<key>CODE_SIGN_STYLE</key>
 				<string>Automatic</string>
 				<key>DEBUG_INFORMATION_FORMAT</key>
@@ -88,7 +94,7 @@
 				<key>PRODUCT_NAME</key>
 				<string>WithLive</string>
 				<key>SWIFT_ACTIVE_COMPILATION_CONDITIONS</key>
-				<string>$(inherited) FIREBASE_ENABLED</string>
+				<string>$(inherited) FIREBASE_ENABLED DEBUG</string>
 				<key>SWIFT_EMIT_LOC_STRINGS</key>
 				<string>YES</string>
 				<key>SWIFT_OPTIMIZATION_LEVEL</key>
@@ -393,6 +399,12 @@
 			<dict>
 				<key>ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME</key>
 				<string>WithAccent</string>
+				<key>CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]</key>
+				<string>YES</string>
+				<key>CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]</key>
+				<string>Configuration/WithSimulator.entitlements</string>
+				<key>CODE_SIGN_IDENTITY[sdk=iphonesimulator*]</key>
+				<string>-</string>
 				<key>CODE_SIGN_STYLE</key>
 				<string>Automatic</string>
 				<key>DEBUG_INFORMATION_FORMAT</key>
