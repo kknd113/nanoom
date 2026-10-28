@@ -12,13 +12,13 @@ Brand confirmed on October 27, 2026: **Nanoom / 나눔**. Wordmark: **nanoom**. 
 
 ## Start here
 
-1. Open **Xcode** and review/accept its license. The host currently reports an unaccepted Xcode license.
-2. Complete Xcode’s first-launch setup; install an iOS Simulator runtime if prompted.
+1. Open **Xcode** and complete first-launch setup if needed.
+2. Select an installed iPhone simulator; the verified run used iPhone 18 Pro with iOS 27.0.
 3. Open `With.xcodeproj`, select **WithDemo**, select an iPhone simulator, then Run.
 4. Choose **Explore Grace Group**. This is an explicitly labeled sample group; no real login occurs.
 5. Product → Test runs the repository tests once Xcode is ready.
 
-**Build is not verified.** `xcodebuild -list` successfully loaded the project and found WithDemo/WithTests. A generic iOS Simulator build reached Swift compilation, then failed because this execution environment denies the nested sandbox used by Swift macro plugins (`sandbox-exec: sandbox_apply: Operation not permitted`; ObservationMacros/SwiftUIMacros malformed responses). CoreSimulator services were also unavailable. Separately, the system `swift --version` wrapper reported an unaccepted Xcode license. Review the license/setup in Xcode and build locally; the agent did not accept agreements. Unit tests and visual device QA are still pending.
+**Demo build and simulator launch verified on October 27, 2026.** Xcode 27.1 / Swift 6.4 built WithDemo successfully. The app was installed and launched on iPhone 18 Pro (iOS 27.0), and its native welcome/composer UI was observed. All three repository tests passed. No source fixes were needed. The earlier macro/CoreSimulator errors came from restricted execution; running the Xcode tools with approved simulator access resolved them. The Firebase Live target and real-device behavior remain unverified.
 
 ## Validation completed
 
@@ -26,7 +26,8 @@ Brand confirmed on October 27, 2026: **Nanoom / 나눔**. Wordmark: **nanoom**. 
 - `xcodebuild -list` recognized WithDemo, WithTests, Debug/Release, and the shared WithDemo scheme.
 - Generator runs using Node’s standard library without Homebrew, CocoaPods, or XcodeGen.
 - Source references, shared schemes, color catalog JSON, and generated project structure were checked.
-- Unit tests cover author-only edits, append-only updates with persistence, and idempotent reaction membership. Their execution is pending.
+- Three simulator unit tests passed: author-only edits, append-only updates with persistence, and idempotent reaction membership.
+- WithDemo built and launched successfully on iPhone 18 Pro / iOS 27.0.
 
 ## Live work still needed
 

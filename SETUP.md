@@ -2,9 +2,9 @@
 
 The brand is Nanoom / 나눔. The existing `With` project and scheme names below are internal development identifiers. Final Bundle IDs have not been registered.
 
-## 1. Resolve the local toolchain blocker
+## 1. Run the verified native demo
 
-Xcode is installed at `/Applications/Xcode.app` (version 27.1). `swift --version` returned the unaccepted license message. Open Xcode and personally review/accept the license and complete first-launch setup. The agent did not accept the agreement or run a privileged installation.
+Verified on October 27, 2026: Xcode 27.1, Swift 6.4, iPhone 18 Pro with iOS 27.0. The demo built and launched, and all three unit tests passed. Open Xcode and complete any first-launch setup on a new machine. No new agreement was accepted by the agent.
 
 Then try:
 
@@ -21,7 +21,7 @@ xcodebuild test -project With.xcodeproj -scheme WithDemo \
   -derivedDataPath work/DerivedData CODE_SIGNING_ALLOWED=NO
 ```
 
-The generic simulator build reached compilation, but macro plugins failed because the agent environment denies nested sandbox creation. CoreSimulator services were also inaccessible, so runtime availability could not be confirmed. Install a runtime in Xcode Settings → Components if needed. This failure is recorded separately from the license warning; it does not prove the app compiles or that a runtime is absent.
+The previous restricted-agent run failed to start Swift macro plugins and CoreSimulator services. A subsequent run with approved Xcode/Simulator access succeeded. If running inside a sandboxed agent, permit the normal Xcode tools to access those services rather than disabling compiler sandbox protections.
 
 ## 2. Connect the optional live project later
 
