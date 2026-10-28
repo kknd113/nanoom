@@ -1,0 +1,15 @@
+.DS_Store
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+Configuration/GoogleService-Info.plist
+.env*
+node_modules/
+firebase-debug.log
+firestore-debug.log
+*.p8
+*.p12
+*.mobileprovision
+*service-account*.json
+*serviceAccount*.json
