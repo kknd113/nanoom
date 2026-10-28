@@ -8,6 +8,7 @@ import FirebaseCore
 @MainActor @Observable
 final class AppModel {
     private let repository: any PrayerRepository
+    @ObservationIgnored private var refreshGeneration = 0
     var user: AppUser?
     var group: PrayerGroup?
     var selectedMemberID = "anna"
@@ -44,6 +45,7 @@ final class AppModel {
         guard let group, let user else { return false }
         do {
             try await repository.setProfilePhoto(groupID: group.id, userID: user.id, data: data)
+            guard self.user?.id == user.id, self.group?.id == group.id else { return false }
             await refresh()
             return true
         } catch { errorMessage = error.localizedDescription; return false }
@@ -55,6 +57,9 @@ final class AppModel {
     }
 
     func signedIn(id: String, name: String) async {
+        if user?.id != id {
+            group = nil; path = []; inviteCode = nil
+        }
         user = AppUser(id: id, displayName: name)
         await refresh()
     }
@@ -71,6 +76,8 @@ final class AppModel {
         do { try Auth.auth().signOut() } catch { errorMessage = error.localizedDescription; return }
         #endif
         user = nil; group = nil; path = []; inviteCode = nil; composer = nil
+        refreshGeneration += 1
+        isLoading = false
     }
 
     #if FIREBASE_ENABLED
@@ -80,8 +87,9 @@ final class AppModel {
         do {
             if code.isEmpty { try await live.createGroup(name: name, user: user) }
             else { try await live.joinGroup(code: code, user: user) }
+            guard self.user?.id == user.id else { return }
             path = []; inviteCode = nil
-            clearInvitation()
+            if pendingInviteCode == InvitationLink.code(fromInput: code) { clearInvitation() }
             errorMessage = nil
             await refresh()
         } catch { errorMessage = error.localizedDescription }
@@ -93,22 +101,34 @@ final class AppModel {
         guard !makingInvitation else { return }
         makingInvitation = true
         defer { makingInvitation = false }
-        do { inviteCode = try await live.createInvitation(groupID: group.id) }
+        let userID = user?.id
+        do {
+            let code = try await live.createInvitation(groupID: group.id)
+            guard self.group?.id == group.id, user?.id == userID else { return }
+            inviteCode = code
+        }
         catch { errorMessage = error.localizedDescription }
     }
     #endif
 
     func refresh() async {
         guard let user else { return }
+        refreshGeneration += 1
+        let generation = refreshGeneration
         isLoading = true
-        defer { isLoading = false }
+        defer { if generation == refreshGeneration { isLoading = false } }
         do {
-            group = try await repository.loadGroup(userID: user.id)
+            let loaded = try await repository.loadGroup(userID: user.id)
+            guard self.user?.id == user.id, generation == refreshGeneration else { return }
+            group = loaded
             if !others.contains(where: { $0.id == selectedMemberID }) {
                 selectedMemberID = others.first?.id ?? ""
             }
-        } catch WithError.membershipRequired { group = nil }
-        catch { errorMessage = error.localizedDescription }
+        } catch {
+            guard self.user?.id == user.id, generation == refreshGeneration else { return }
+            if case WithError.membershipRequired = error { group = nil }
+            else { errorMessage = error.localizedDescription }
+        }
     }
 
     var others: [GroupMember] { group?.members.filter { $0.id != user?.id } ?? [] }

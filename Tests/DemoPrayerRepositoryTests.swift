@@ -99,3 +99,58 @@ final class InvitationPendingStateTests: XCTestCase {
         XCTAssertNil(AppModel(repository: DemoPrayerRepository(), isDemo: false).pendingInviteCode)
     }
 }
+
+@MainActor
+private final class SuspendedGroupRepository: PrayerRepository {
+    var requests: [CheckedContinuation<PrayerGroup, Error>] = []
+    func loadGroup(userID: String) async throws -> PrayerGroup {
+        try await withCheckedThrowingContinuation { requests.append($0) }
+    }
+    func setProfilePhoto(groupID: String, userID: String, data: Data?) async throws { throw WithError.noGroup }
+    func createPrayer(groupID: String, authorID: String, body: String) async throws { throw WithError.noGroup }
+    func updatePrayer(groupID: String, prayerID: String, authorID: String, body: String) async throws { throw WithError.noGroup }
+    func deletePrayer(groupID: String, prayerID: String, authorID: String) async throws { throw WithError.noGroup }
+    func addUpdate(groupID: String, prayerID: String, authorID: String, body: String) async throws { throw WithError.noGroup }
+    func setPrayed(groupID: String, prayerID: String, userID: String, prayed: Bool) async throws { throw WithError.noGroup }
+}
+
+@MainActor
+final class SessionRefreshTests: XCTestCase {
+    private func waitForRequests(_ count: Int, in repository: SuspendedGroupRepository) async {
+        for _ in 0..<100 {
+            if repository.requests.count >= count { return }
+            await Task.yield()
+        }
+    }
+    func testInFlightRefreshCannotRestoreGroupAfterSignOut() async throws {
+        let repository = SuspendedGroupRepository()
+        let model = AppModel(repository: repository, isDemo: true)
+        model.user = AppUser(id: "old-user", displayName: "Old")
+        let request = Task { await model.refresh() }
+        await waitForRequests(1, in: repository)
+        let continuation = try XCTUnwrap(repository.requests.first)
+        model.signOut()
+        continuation.resume(returning: PrayerGroup(id: "private-old-group", name: "Private", members: [], prayers: []))
+        await request.value
+        XCTAssertNil(model.user)
+        XCTAssertNil(model.group)
+        XCTAssertFalse(model.isLoading)
+    }
+    func testSlowerRefreshCannotReplaceNewerCircle() async throws {
+        let repository = SuspendedGroupRepository()
+        let model = AppModel(repository: repository, isDemo: true)
+        model.user = AppUser(id: "user", displayName: "Person")
+        let old = Task { await model.refresh() }
+        await waitForRequests(1, in: repository)
+        let new = Task { await model.refresh() }
+        await waitForRequests(2, in: repository)
+        XCTAssertEqual(repository.requests.count, 2)
+        guard repository.requests.count == 2 else { return }
+        repository.requests[1].resume(returning: PrayerGroup(id: "new", name: "New circle", members: [], prayers: []))
+        await new.value
+        repository.requests[0].resume(returning: PrayerGroup(id: "old", name: "Old circle", members: [], prayers: []))
+        await old.value
+        XCTAssertEqual(model.group?.id, "new")
+        XCTAssertFalse(model.isLoading)
+    }
+}

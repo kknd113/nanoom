@@ -28,7 +28,7 @@ Backend: **nanoom-kknd113**, Firebase Spark, Firestore Standard `(default)`, **u
 - Fixed missing simulator Keychain entitlements (Firebase 17995 / OSStatus -34018) by enabling app-scoped local signing. Native Firebase account creation, sign-out/sign-in and session restoration across process restart were verified; the synthetic account was deleted.
 - **58 checks against the actual cloud backend** passed: multi-account sharing, invitation join/revocation, author ownership, schema/size/timestamp validation, reaction uniqueness, unauthenticated/outsider denial, deleted-thread denial, avatar ownership/size/schema/privacy validation and invitation-name spoof prevention.
 - Synthetic verification accounts and their test group/index records were cleaned up.
-- Seven native tests passed across the demo/domain suites, covering existing prayer behavior plus strict invite parsing, pending-link persistence and photo ownership/persistence/removal. Native photo picker → crop → saved avatar display was visually verified with a synthetic image.
+- Nine native tests passed across the demo/domain suites, covering existing prayer behavior plus strict invite parsing, pending-link persistence, photo ownership/persistence/removal and stale-response isolation after logout or a newer refresh. Native photo picker → crop → saved avatar display was visually verified with a synthetic image.
 
 ## Limits before broader release
 

@@ -21,3 +21,5 @@ Palette keeps the existing app identity: Ink #24354A, Prayer blue #4C6F9B, Mist 
 Do not change the app name again. Do not add an ornamental cross, dove, praying hands or a generic heart solely to signal the category. Test the recommended symbol at 24px and as an iPhone icon, including monochrome and dark appearance. The central dot may be removed for very small sizes if testing shows it closes up, but preserve its role in the main mark.
 
 These are review assets. The shipping wordmark and app icon have not been replaced automatically.
+
+Monochrome masters added for practical review: nanoom-mark-black.svg and nanoom-mark-white.svg. Both preserve the same geometry as the blue master. Use white only on a sufficiently dark field; do not introduce a shadow to make it legible on a pale background. Small-size review should compare the central dot's separation, not just recognition of the outer n.

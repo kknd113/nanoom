@@ -34,3 +34,12 @@ Updated October 27, 2026 (Los Angeles). Continue in this chat; preserve the user
 - Profile photos are small Firestore byte blobs scoped to a circle, not full-resolution images or a global user avatar. This should be reassessed before large-scale use.
 - Updates still refresh on actions/pull-to-refresh; realtime/pagination and membership lifecycle cleanup remain work.
 - Account deletion, group leave/removal and full physical cleanup are still release prerequisites. No claim of E2EE or production security certification.
+
+## Second review iteration — October 28
+
+- Fixed a stale-response bug: a slow refresh can no longer restore group data after sign-out or replace the result of a newer refresh. Session changes clear displayed navigation/group state. Two controlled asynchronous regression tests passed.
+- An older invitation join no longer clears a different invitation received while the join was pending. Invite generation only displays its result if the same user/group is still active.
+- Photo saving stops updating the visible profile if the user/group changed during the request.
+- Crop preview now has VoiceOver actions to move the image, a Reset position control, and scrolling for smaller windows/larger text.
+- Added matching black/white SVG masters and Research/release-readiness.md with a concrete plan for group leave/removal, ownership transfer and full account-data cleanup without assuming billing-dependent infrastructure.
+- Evidence: work/nanoom-session-refresh-tests.log; work/nanoom-overnight-build.log. The original 58 cloud checks remain relevant because no backend rules/schema changed in this review.

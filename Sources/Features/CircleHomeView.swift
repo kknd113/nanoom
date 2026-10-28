@@ -273,6 +273,7 @@ struct AvatarCropView: View {
             let scale = min(4, max(1, zoom * pinch))
             let position = bounded(CGSize(width: offset.width + drag.width, height: offset.height + drag.height), zoom: scale, side: side)
             let base = side / min(image.size.width, image.size.height)
+            ScrollView {
             VStack(spacing: 24) {
                 Spacer()
                 ZStack {
@@ -287,9 +288,15 @@ struct AvatarCropView: View {
                 .simultaneousGesture(MagnificationGesture().updating($pinch) { value, state, _ in state = value }
                     .onEnded { value in zoom = min(4, max(1, zoom * value)); offset = bounded(offset, zoom: zoom, side: side) })
                 .accessibilityLabel("Photo preview")
+                .accessibilityAction(named: Text("Move photo left")) { movePhoto(x: -20, y: 0, side: side) }
+                .accessibilityAction(named: Text("Move photo right")) { movePhoto(x: 20, y: 0, side: side) }
+                .accessibilityAction(named: Text("Move photo up")) { movePhoto(x: 0, y: -20, side: side) }
+                .accessibilityAction(named: Text("Move photo down")) { movePhoto(x: 0, y: 20, side: side) }
                 Text("Drag to position. Pinch to zoom.").font(.subheadline).foregroundStyle(.secondary)
                 Slider(value: $zoom, in: 1...4).accessibilityLabel("Photo zoom").padding(.horizontal, 36)
                     .onChange(of: zoom) { _, value in offset = bounded(offset, zoom: value, side: side) }
+                Button("Reset position") { zoom = 1; offset = .zero }.disabled(saving)
+                    .frame(minHeight: 44)
                 if let issue { Text(issue).font(.caption).foregroundStyle(.secondary) }
                 Button {
                     Task {
@@ -303,11 +310,15 @@ struct AvatarCropView: View {
                     .buttonStyle(PrimaryButtonStyle()).disabled(saving)
                 Spacer()
             }.padding(24).frame(maxWidth: .infinity)
+            }
         }
         .background(Color.withPaper.ignoresSafeArea())
         .navigationTitle("Make it yours")
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(saving) } }
         .interactiveDismissDisabled(saving)
+    }
+    private func movePhoto(x: CGFloat, y: CGFloat, side: CGFloat) {
+        offset = bounded(CGSize(width: offset.width + x, height: offset.height + y), zoom: zoom, side: side)
     }
     private func render(side: CGFloat) -> Data? {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1; format.opaque = true
