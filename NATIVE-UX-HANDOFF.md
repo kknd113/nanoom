@@ -1,6 +1,6 @@
 # Nanoom 네이티브 UX 인계 · 초안
 
-**10월 29일 03시 검토 기준. 오전 8시 LA 시간 최종 리뷰 전 초안이며, 후속 리뷰는 계속 진행 중입니다.**
+**10월 29일 06시 검토 기준. 오전 8시 LA 시간 최종 리뷰 전 초안이며, 후속 리뷰는 계속 진행 중입니다.**
 
 ## 바뀐 경험
 
@@ -33,6 +33,7 @@
 - [큰 글씨 홈](../nanoom-accessibility-home.png), [읽기 공간을 확보한 상세](../nanoom-prayer-dock-accessibility.png)
 - [초대](../nanoom-invite-iteration-3.png), [초대 오류](../nanoom-invite-error.png)
 - [작은 화면 글쓰기](../nanoom-small-composer.png), [작은 화면 홈](../nanoom-small-home.png)
+- 구현 커밋: [홈·상세 구조](https://github.com/kknd113/nanoom/commit/f8ee3d2f3a5dbcf85186654740e0227a3f1943a6), [큰 글씨·작성 화면](https://github.com/kknd113/nanoom/commit/9b2101673a44018975deae342d7b6fc59835da38), [초대 화면](https://github.com/kknd113/nanoom/commit/609d7475cdcd9bfb4ccbd9b11c805b3ea27c3092), [접근성 상세 동작](https://github.com/kknd113/nanoom/commit/f53eebfc4dfc17f6cf7690407bb2ec7b6ce72efc), [작성 중 초대 보류](https://github.com/kknd113/nanoom/commit/af738aaa6986a60b000595ebc596d300000db1fb)
 - [전체 커밋](https://github.com/kknd113/nanoom/commits/main/), [검토 기록](NATIVE-UX-PROGRESS.md), [앱 UX 사례 연구와 출처](UX-APP-REFERENCES.md)
 
 Locket의 사람 중심 구조, Gentler Streak의 부담을 줄이는 구성, Partiful의 맥락 있는 초대, Tiimo의 읽기 쉬운 정보 계층을 참고했습니다. Nanoom에서의 효과는 검증할 제품 가설이며, 다른 앱의 수상을 유지율 개선 근거로 간주하지 않았습니다.

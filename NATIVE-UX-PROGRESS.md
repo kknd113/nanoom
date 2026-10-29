@@ -84,6 +84,12 @@ The native accessibility tree exposed the person buttons with selected state, th
 
 No new app issue was observed, and no source edits or redundant build/test reruns were justified. The invitation overlap behavior remains covered by the 10-test suite from iteration 6; this pass did not send a synthetic link to the live user. Continue scheduled reviews through 08:00 LA.
 
+## Review 9 · October 29, 06:13 LA
+
+Checked the shipped sRGB asset values with relative-luminance contrast arithmetic. Ink/Paper is 12.04:1 in light and 15.08:1 in dark; Accent/Paper is 5.00:1 and 9.83:1; Accent/Soft (avatar initials and the group privacy capsule) is 4.52:1 and 7.04:1. All six unrounded results exceed 4.5:1. [W3C's contrast explanation](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html) supplies the reference threshold and cautions against rounding borderline failures. This is a limited palette check, not certification of the app: system semantic text, transparency composites, disabled states, images and actual physical display conditions were not measured by this calculation. No palette change was justified.
+
+Confirmed both Xcode projects declare iOS 18.0 at project level and the only Liquid Glass API is inside the iOS 26 availability branch, after the Reduce Transparency branch. The fallback uses regularMaterial and a rounded stroke. Current SDK builds have already passed; this source check does not replace execution on an iOS 18 runtime. Updated the draft handoff with its current review time and direct implementation commit links. No app changes, Firebase operations or redundant tests were needed. Continue scheduled reviews until the final 08:00 LA handoff.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.
