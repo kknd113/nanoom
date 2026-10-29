@@ -15,8 +15,7 @@ struct WelcomeView: View {
         VStack(alignment: .leading, spacing: 22) {
             WithWordmark()
             Spacer()
-            Image(systemName: "heart.circle").font(.system(size: 68, weight: .ultraLight))
-                .foregroundStyle(Color.withAccent).accessibilityHidden(true)
+            NanoomSymbol()
             Text("A little closer.\nEven between\nSundays.")
                 .font(.system(.largeTitle, design: .rounded).weight(.medium)).tracking(-1)
             Text("A quiet place to share what’s on your heart and pray for one another.")
@@ -169,7 +168,7 @@ struct InvitationJoinView: View {
         NavigationStack {
             VStack(spacing: 24) {
                 Spacer()
-                Image(systemName: "person.2.circle").font(.system(size: 70, weight: .ultraLight)).foregroundStyle(Color.withAccent)
+                NanoomSymbol()
                 if let invitation {
                     Text("A place in\n\(invitation.groupName)").font(.system(.largeTitle, design: .rounded)).multilineTextAlignment(.center)
                     Text("Share life. Hold one another in prayer.").foregroundStyle(.secondary)

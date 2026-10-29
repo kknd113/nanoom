@@ -24,4 +24,4 @@ nanoom-wordmark-v2.svg is custom vector lettering: single-storey a, rounded n, c
 - nanoom-icon-light-v2.svg / nanoom-icon-dark-v2.svg — full-size icon masters.
 - refinement-board.svg — before/after, icon, logotype and size review.
 
-The corresponding rendered PNG board and 1024px icon exports are saved in the enclosing outputs directory for quick preview/use. Original first-round files are preserved. These refinement assets have not automatically replaced the running app's identity.
+The corresponding rendered PNG board and 1024px icon exports are saved in the enclosing outputs directory for quick preview/use. Original first-round files are preserved. The user approved these assets for application on October 28, 2026. They now supply the native AppIcon, in-app symbol and outlined wordmark. The asset catalog stores template SVGs with tighter presentation bounds; original masters remain unchanged here.

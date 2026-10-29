@@ -38,4 +38,4 @@ See [SETUP.md](SETUP.md) for configuration, verification and rule-review details
 
 ## Overnight design and research
 
-[Brand directions and SVG masters](Branding/README.md) · [Visual brand board](Branding/index.html) · [Sourced market review and next-move recommendation](Research/market-review.md). These are reviewable proposals; the installed app name/wordmark remain Nanoom.
+[Brand directions and SVG masters](Branding/README.md) · [Visual brand board](Branding/index.html) · [Sourced market review and next-move recommendation](Research/market-review.md). The user selected Held n refinement 02; its symbol, outlined wordmark and light/dark icons now appear in the native app. Earlier alternatives remain available as design history.

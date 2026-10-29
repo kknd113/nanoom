@@ -44,7 +44,23 @@ struct MemberAvatar: View {
 
 struct WithWordmark: View {
     var body: some View {
-        Text("nanoom").font(.system(size: 27, weight: .medium, design: .rounded)).tracking(-1)
-            .foregroundStyle(Color.withInk).accessibilityLabel("Nanoom")
+        HStack(spacing: 9) {
+            Image("NanoomMark").resizable().scaledToFit()
+                .foregroundStyle(Color.withAccent).frame(width: 25, height: 25)
+            Image("NanoomWordmark").resizable().scaledToFit()
+                .foregroundStyle(Color.withInk).frame(width: 132, height: 22)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Nanoom")
+    }
+}
+
+struct NanoomSymbol: View {
+    var size: CGFloat = 88
+    var body: some View {
+        Image("NanoomMark").resizable().scaledToFit()
+            .foregroundStyle(Color.withAccent)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
     }
 }
