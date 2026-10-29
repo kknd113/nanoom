@@ -54,6 +54,14 @@ Both final Demo and Live builds passed, as did project reference validation and 
 
 Screenshots: `../nanoom-prayer-dock-before.png`, `../nanoom-prayer-dock-accessibility.png`, `../nanoom-prayer-reduced-transparency-dark.png`. Build logs: `../../work/nanoom-native-ux-04-*`. Next reviews should prioritize a smaller phone viewport/long content and final flow consistency rather than more decoration. Full VoiceOver audio and physical-device checks remain outstanding. Morning handoff is still due at 08:00 LA; keep follow-ups active.
 
+## Review 5 · October 29, 02:13–02:25 LA
+
+Expanded native coverage to the narrower **iPhone 17e / iOS 27.0** simulator with the existing Demo binary. Reviewed welcome, the people-first circle, floating actions and composer with the software keyboard. Used a synthetic multiline draft to confirm the disabled Share action and red counter at 2,002 characters, then the enabled action at exactly 2,000 after native keyboard deletion. The editor remained scrollable and the toolbar stayed reachable. No app source changes were justified by this pass.
+
+A coordinate drag intended for the sheet reached the system notification/lock interface instead. During this automation attempt the simulator displayed black and stopped returning launch results; restarting only the disposable 17e simulator restored normal operation. The 2,000-character Demo draft was restored after restart. A later attempt visibly reached the system notification interface, so this is not evidence of a Nanoom crash. Direct Cancel → explicit discard → reopen empty composer (0/2000) was then verified. Sheet-drag dismissal on this device is **not** marked passed; use native accessibility targets or a manual gesture for that remaining check. No production data was involved and no prayer was submitted.
+
+Returned Device Hub to the existing iPhone 18 Pro with the user's live account intact, then shut down only the extra 17e simulator. Screenshots: `../nanoom-small-welcome.png`, `../nanoom-small-composer.png`, `../nanoom-small-home.png`. No build/test rerun was needed because this pass changes review notes only. Next: final consistency/accessibility review and draft the morning handoff; continue scheduled reviews until 08:00 LA.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.
@@ -63,4 +71,4 @@ Facts: Apple's current guidance treats Liquid Glass as a navigation/control laye
 - [WWDC25 · Build a SwiftUI app with the new design](https://developer.apple.com/videos/play/wwdc2025/323/)
 - [WWDC25 · Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)
 
-Limits: iOS 18 fallback compiles against the current SDK but has not yet been exercised on an iOS 18 runtime. Current visual verification uses iPhone 18 Pro / iOS 27 simulator. VoiceOver labels were inspected through accessibility state; a full VoiceOver listening audit remains outstanding. No claim of production readiness.
+Limits: iOS 18 fallback compiles against the current SDK but has not yet been exercised on an iOS 18 runtime. Current visual verification uses iPhone 18 Pro and iPhone 17e / iOS 27 simulators. VoiceOver labels were inspected through accessibility state; a full VoiceOver listening audit remains outstanding. No claim of production readiness.
