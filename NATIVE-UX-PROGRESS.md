@@ -76,6 +76,14 @@ Reviewed the source accessibility semantics for member selection, prayer cards/a
 
 Audited every local link in the draft handoff: all eight linked screenshots and both linked documents exist. The screenshots decode at their expected native simulator resolutions (1206 × 2622 or 1170 × 2532) and are not blank black captures. Screenshot paths refer to the local outputs folder, not files published in the GitHub repository; the handoff now makes this explicit. No build or test rerun was needed for documentation-only changes. The latest code remains the tested invitation-queue fix (10 passing native tests). Continue scheduled reviews until 08:00 LA.
 
+## Review 8 · October 29, 05:11 LA
+
+Reviewed composer cancellation alongside the previously tested pending-invitation condition. On the native iPhone 18 Pro Demo, changed writing produced the discard confirmation; dismissing the confirmation outside its popover preserved the draft and character count. Reopening Cancel and explicitly discarding returned to the circle, and reopening writing showed 0/2000. An unchanged empty composer closed directly. No prayer was submitted. The simulator keyboard automation emitted modified Unicode characters instead of the requested ASCII phrase, so this verifies cancellation/state preservation with synthetic text rather than English keyboard fidelity; the draft was fully discarded.
+
+The native accessibility tree exposed the person buttons with selected state, the combined prayer card with its opening hint, Share a prayer, My prayers, the named editor and character counter. Composer toolbar actions were visible but not included by Device Hub in that sheet's accessibility snapshot; coordinate clicks were required. This is a tool-observation limit and does not establish either a VoiceOver pass or a VoiceOver failure. Full listening/traversal remains pending. Restored keyboard capture to its original off state and returned to the Live app with no account/data changes.
+
+No new app issue was observed, and no source edits or redundant build/test reruns were justified. The invitation overlap behavior remains covered by the 10-test suite from iteration 6; this pass did not send a synthetic link to the live user. Continue scheduled reviews through 08:00 LA.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.
