@@ -22,6 +22,16 @@ Local screenshots are one directory above this repository: `nanoom-native-ux-hom
 4. Rebuild only changed targets; run relevant regression tests when behavior changes. Push tested changes through the GitHub plugin. Use expected branch head to preserve concurrent edits.
 5. At the morning review, write a concise handoff with actual screenshots, commits, checks and remaining limits; then pause the heartbeat. Do not stop follow-ups after this first successful pass.
 
+## Iteration 2 · October 28, 23:06–23:15 LA
+
+Observed at the largest accessibility text size: the home action dock clipped its primary label, the adaptive avatar grid truncated even short names, and the welcome view compressed its copy and button into unreadable fragments. With the software keyboard visible, the composer initially placed its input behind the keyboard.
+
+Fixes: accessibility text sizes now use full-width member rows and vertically arranged home actions. Primary buttons allow multiline text and proper inner padding. Welcome content scrolls and preserves full headings. The composer scrolls, scales its editor height with Dynamic Type, stacks privacy/counter labels when needed, and brings the editor into view on focus or keyboard-driven size changes. Shorter placeholder copy avoids a paragraph of oversized example text. Standard-size circular navigation and horizontal actions remain in place.
+
+Validation: final Demo and Live simulator builds passed; project validation and whitespace checks passed. Actual native walkthrough at the largest accessibility size verified full names/actions, welcome scrolling to its complete button, composer with the software keyboard visible and its input above it, synthetic draft editing and explicit discard. Only local Demo content was used; no live account or prayer data changed. Original simulator text size (`large`) was restored. These are layout changes; the 9 native regression tests passed in iteration 1 and were not redundantly rerun in this pass.
+
+Screenshots: `../nanoom-accessibility-before.png` records the original clipping; `../nanoom-accessibility-home.png` records the corrected full-name rows and stacked actions. Continue next with invitation/profile flows, long group/member names and reduced motion/transparency; a full VoiceOver audio audit and older/smaller runtime coverage remain pending. Hourly follow-ups remain active until the morning handoff.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.

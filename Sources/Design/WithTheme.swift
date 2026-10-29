@@ -14,6 +14,9 @@ struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(.callout, design: .rounded).weight(.semibold))
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 18).padding(.vertical, 12)
             .frame(maxWidth: .infinity, minHeight: 54)
             .background(Color.withInk, in: Capsule())
             .foregroundStyle(Color.withPaper)

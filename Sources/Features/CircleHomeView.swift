@@ -6,6 +6,7 @@ struct CircleHomeView: View {
     @Environment(AppModel.self) private var model
     @State private var settings = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         @Bindable var model = model
@@ -43,15 +44,22 @@ struct CircleHomeView: View {
         }
         .background(Color.withPaper.ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack(spacing: 10) {
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 10))
+            layout {
                 Button { model.composer = .prayer } label: {
                     Label("Share a prayer", systemImage: "plus")
                 }.buttonStyle(PrimaryButtonStyle())
                 Button { model.path.append("__mine") } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: "text.book.closed").font(.system(size: 19, weight: .medium))
-                        Text("My prayers").font(.caption2.weight(.medium))
-                    }.frame(minWidth: 72, minHeight: 54)
+                    if typeSize.isAccessibilitySize {
+                        Label("My prayers", systemImage: "text.book.closed")
+                            .font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    } else {
+                        VStack(spacing: 4) {
+                            Image(systemName: "text.book.closed").font(.system(size: 19, weight: .medium))
+                            Text("My prayers").font(.caption2.weight(.medium))
+                        }.frame(minWidth: 72, minHeight: 54)
+                    }
                 }.buttonStyle(.plain).accessibilityLabel("My prayers")
             }
             .padding(10).floatingActionSurface()
@@ -139,7 +147,11 @@ struct PrayerCircleView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        if typeSize.isAccessibilitySize || model.others.count > 8 {
+        if typeSize.isAccessibilitySize {
+            VStack(spacing: 14) {
+                ForEach(model.others) { member in memberButton(member) }
+            }.padding(.vertical, 12)
+        } else if model.others.count > 8 {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 20) {
                 ForEach(model.others) { member in memberButton(member) }
             }.padding(.vertical, 25)
@@ -174,11 +186,21 @@ struct PrayerCircleView: View {
                 model.selectedMemberID = member.id
             }
         } label: {
-            VStack(spacing: 8) {
-                MemberAvatar(member: member, selected: model.selectedMemberID == member.id)
-                    .scaleEffect(model.selectedMemberID == member.id ? 1.06 : 1)
-                Text(member.displayName).font(.caption).lineLimit(1)
-            }.frame(width: 74).frame(minHeight: 78)
+            if typeSize.isAccessibilitySize {
+                HStack(spacing: 16) {
+                    MemberAvatar(member: member, selected: model.selectedMemberID == member.id)
+                    Text(member.displayName).font(.body).multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
+                    if model.selectedMemberID == member.id { Image(systemName: "checkmark").foregroundStyle(Color.withAccent) }
+                }.frame(maxWidth: .infinity, minHeight: 62).padding(.vertical, 6)
+            } else {
+                VStack(spacing: 8) {
+                    MemberAvatar(member: member, selected: model.selectedMemberID == member.id)
+                        .scaleEffect(model.selectedMemberID == member.id ? 1.06 : 1)
+                    Text(member.displayName).font(.caption).lineLimit(1)
+                }.frame(width: 74).frame(minHeight: 78)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Read \(member.displayName)’s prayers")

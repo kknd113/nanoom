@@ -12,42 +12,48 @@ struct WelcomeView: View {
     #endif
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            WithWordmark()
-            Spacer()
-            NanoomSymbol()
-            Text("A little closer.\nEven between\nSundays.")
-                .font(.system(.largeTitle, design: .rounded).weight(.medium)).tracking(-1)
-            Text("A quiet place to share what’s on your heart and pray for one another.")
-                .foregroundStyle(.secondary)
-            Spacer()
-            if model.isDemo {
-                Label("Local demo · Sample group", systemImage: "iphone")
-                    .font(.caption).foregroundStyle(.secondary)
-                Button { Task { await model.startDemo() } } label: {
-                    Label("Explore Grace Group", systemImage: "arrow.right")
-                }.buttonStyle(PrimaryButtonStyle())
-                Text("Changes stay on this device. No account or network needed.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                #if FIREBASE_ENABLED
-                if model.pendingInviteCode != nil {
-                    Label("Your invitation is ready. Sign in to join.", systemImage: "person.2")
-                        .font(.subheadline).foregroundStyle(Color.withAccent)
-                    Button("Dismiss invitation") { model.clearInvitation() }.font(.caption)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    WithWordmark()
+                    Spacer(minLength: 36)
+                    NanoomSymbol()
+                    Text("A little closer.\nEven between\nSundays.")
+                        .font(.system(.largeTitle, design: .rounded).weight(.medium)).tracking(-1)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("A quiet place to share what’s on your heart and pray for one another.")
+                        .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 36)
+                    if model.isDemo {
+                        Label("Local demo · Sample group", systemImage: "iphone")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button { Task { await model.startDemo() } } label: {
+                            Label("Explore Grace Group", systemImage: "arrow.right")
+                        }.buttonStyle(PrimaryButtonStyle())
+                        Text("Changes stay on this device. No account or network needed.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        #if FIREBASE_ENABLED
+                        if model.pendingInviteCode != nil {
+                            Label("Your invitation is ready. Sign in to join.", systemImage: "person.2")
+                                .font(.subheadline).foregroundStyle(Color.withAccent)
+                            Button("Dismiss invitation") { model.clearInvitation() }.font(.caption)
+                        }
+                        Button { showAccount = true } label: {
+                            Label("Continue with email", systemImage: "envelope")
+                        }.buttonStyle(PrimaryButtonStyle())
+                        .sheet(isPresented: $showAccount) {
+                            NavigationStack { EmailAccountView() }.environment(model)
+                        }
+                        Text("A private account. A little space for your people.")
+                            .font(.caption).foregroundStyle(.secondary)
+                        #endif
+                    }
                 }
-                Button { showAccount = true } label: {
-                    Label("Continue with email", systemImage: "envelope")
-                }.buttonStyle(PrimaryButtonStyle())
-                .sheet(isPresented: $showAccount) {
-                    NavigationStack { EmailAccountView() }.environment(model)
-                }
-                Text("A private account. A little space for your people.")
-                    .font(.caption).foregroundStyle(.secondary)
-                #endif
+                .frame(minHeight: max(0, geometry.size.height - 100), alignment: .leading)
+                .padding(30).padding(.vertical, 20)
             }
         }
-        .padding(30).padding(.vertical, 20)
         .background(Color.withPaper.ignoresSafeArea())
     }
 }

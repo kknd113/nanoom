@@ -4,6 +4,8 @@ struct PrayerComposerView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focused: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .title3) private var editorHeight: CGFloat = 180
     let route: ComposerRoute
     @State private var text = ""
     @State private var initialText = ""
@@ -18,36 +20,52 @@ struct PrayerComposerView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 7) {
-                    Image(systemName: "lock.fill").font(.caption2)
-                    Text(model.group?.name ?? "Your small group").font(.caption.weight(.medium))
-                }.foregroundStyle(Color.withAccent).padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(Color.withSoft, in: Capsule())
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(isUpdate ? "How have things been?" : isEdit ? "Make it feel like you." : "What’s on your heart?")
-                        .font(.system(.title2, design: .rounded).weight(.semibold)).tracking(-0.4)
-                    Text(isUpdate ? "Still waiting is part of the story, too." : "Small prayers belong here, too.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                }
-                ZStack(alignment: .topLeading) {
-                    if text.isEmpty {
-                        Text(isUpdate ? "A change, a little hope, or where things are today…" : "A small worry, a big hope, or something to be thankful for…")
-                            .font(.title3).foregroundStyle(.tertiary).padding(.top, 8).padding(.leading, 5)
-                            .allowsHitTesting(false).accessibilityHidden(true)
+            GeometryReader { geometry in
+                ScrollViewReader { scroll in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 18) {
+                            HStack(spacing: 7) {
+                                Image(systemName: "lock.fill").font(.caption2)
+                                Text(model.group?.name ?? "Your small group").font(.caption.weight(.medium))
+                            }.foregroundStyle(Color.withAccent).padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(Color.withSoft, in: Capsule())
+                            VStack(alignment: .leading, spacing: 7) {
+                                Text(isUpdate ? "How have things been?" : isEdit ? "Make it feel like you." : "What’s on your heart?")
+                                    .font(.system(.title2, design: .rounded).weight(.semibold)).tracking(-0.4)
+                                Text(isUpdate ? "Still waiting is part of the story, too." : "Small prayers belong here, too.")
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                            }
+                            ZStack(alignment: .topLeading) {
+                                if text.isEmpty {
+                                    Text(isUpdate ? "A change, a little hope, or how things are…" : "A worry, a hope, a thank-you…")
+                                        .font(.title3).foregroundStyle(.tertiary).padding(.top, 8).padding(.leading, 5)
+                                        .allowsHitTesting(false).accessibilityHidden(true)
+                                }
+                                TextEditor(text: $text).font(.title3).lineSpacing(6).focused($focused)
+                                    .scrollContentBackground(.hidden)
+                                    .frame(height: max(editorHeight, geometry.size.height - 245))
+                                    .accessibilityLabel(isUpdate ? "Your update" : "Your prayer")
+                            }.id("composerEditor")
+                            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout())
+                            layout {
+                                Text("Only your circle can see this.").font(.caption)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if !typeSize.isAccessibilitySize { Spacer() }
+                                Text("\(text.count)/2000").font(.caption.monospacedDigit())
+                                    .foregroundStyle(text.count > 2_000 ? Color.red : Color.secondary)
+                            }.foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 24).padding(.top, 18).padding(.bottom, 12)
                     }
-                    TextEditor(text: $text).font(.title3).lineSpacing(6).focused($focused)
-                        .scrollContentBackground(.hidden).frame(minHeight: 120)
-                        .accessibilityLabel(isUpdate ? "Your update" : "Your prayer")
+                    .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: focused) { _, editing in
+                        if editing { scroll.scrollTo("composerEditor", anchor: .top) }
+                    }
+                    .onChange(of: geometry.size.height) { _, _ in
+                        if focused { scroll.scrollTo("composerEditor", anchor: .top) }
+                    }
                 }
-                HStack {
-                    Text("Only your circle can see this.").font(.caption)
-                    Spacer()
-                    Text("\(text.count)/2000").font(.caption.monospacedDigit())
-                        .foregroundStyle(text.count > 2_000 ? Color.red : Color.secondary)
-                }.foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 24).padding(.top, 18).padding(.bottom, 12)
             .background(Color.withPaper.ignoresSafeArea())
             .navigationTitle(isUpdate ? "Add update" : isEdit ? "Edit prayer" : "New prayer")
             .navigationBarTitleDisplayMode(.inline)
