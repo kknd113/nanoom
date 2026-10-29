@@ -62,6 +62,14 @@ A coordinate drag intended for the sheet reached the system notification/lock in
 
 Returned Device Hub to the existing iPhone 18 Pro with the user's live account intact, then shut down only the extra 17e simulator. Screenshots: `../nanoom-small-welcome.png`, `../nanoom-small-composer.png`, `../nanoom-small-home.png`. No build/test rerun was needed because this pass changes review notes only. Next: final consistency/accessibility review and draft the morning handoff; continue scheduled reviews until 08:00 LA.
 
+## Iteration 6 · October 29, 03:10 review
+
+Found a draft-loss path during the flow/state review: `receiveInvitation` unconditionally cleared `composer`, bypassing the writer's discard confirmation. Incoming invitations now remain queued while a prayer, edit or update composer is open. Root navigation presents the queued invitation only after writing ends, keeping the current group and sheet identity stable in the meantime. This preserves the existing memory-only handling of live prayer drafts; no persistent live draft storage was added.
+
+Added a regression covering all three composer routes: receipt retains the route and original group, stores the pending invitation, and defers presentation until the composer closes. **All 10 native tests passed** with zero failures and runtime warnings. Live simulator build, project reference validation and whitespace checks also passed. The case was discovered by code inspection and verified at the model/navigation-condition level; no synthetic deep link was delivered to the user's real live account.
+
+Logs: `../../work/nanoom-native-ux-06-tests.log`, `../../work/nanoom-native-ux-06-live.log`. A draft morning handoff is in `NATIVE-UX-HANDOFF.md`; it must be refreshed at the final 08:00 LA review. Keep scheduled reviews active. Remaining focus: accessibility traversal and final consistency, without more decorative churn.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.

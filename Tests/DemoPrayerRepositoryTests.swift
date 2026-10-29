@@ -83,6 +83,36 @@ final class InvitationAndPhotoTests: XCTestCase {
 
 @MainActor
 final class InvitationPendingStateTests: XCTestCase {
+    func testIncomingInvitationWaitsForPrayerUpdateAndEditComposers() async throws {
+        let key = "nanoom.pendingInvitation"
+        let previous = UserDefaults.standard.object(forKey: key)
+        let suite = "nanoom.invitation-writing.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer {
+            defaults.removePersistentDomain(forName: suite)
+            if let previous { UserDefaults.standard.set(previous, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
+        }
+        let repository = DemoPrayerRepository(defaults: defaults)
+        let model = AppModel(repository: repository, isDemo: false)
+        model.user = AppUser(id: DemoPrayerRepository.userID, displayName: "Synthetic writer")
+        model.group = try await repository.loadGroup(userID: DemoPrayerRepository.userID)
+        let originalGroupID = model.group?.id
+        let code = "0123456789abcdef0123456789abcdef"
+
+        for route in [ComposerRoute.prayer, .update("sample-chris"), .edit("sample-chris")] {
+            model.composer = route
+            model.receiveInvitation(InvitationLink.url(code: code))
+            XCTAssertEqual(model.composer?.id, route.id, "Receiving a link must keep the writer's sheet alive")
+            XCTAssertEqual(model.group?.id, originalGroupID, "Writing must stay in the original circle")
+            XCTAssertEqual(model.pendingInviteCode, code)
+            XCTAssertFalse(model.shouldPresentInvitation)
+
+            model.composer = nil
+            XCTAssertTrue(model.shouldPresentInvitation, "Show the queued invitation after writing ends")
+        }
+    }
+
     func testInvitationSurvivesLoginAndAppModelRecreation() {
         let key = "nanoom.pendingInvitation"
         let previous = UserDefaults.standard.object(forKey: key)

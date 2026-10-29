@@ -30,7 +30,7 @@ final class AppModel {
 
     func receiveInvitation(_ url: URL) {
         guard let code = InvitationLink.code(from: url) else { errorMessage = "This invitation link isn’t valid."; return }
-        composer = nil
+        // Keep the current circle and its in-memory draft until the writer finishes.
         pendingInviteCode = code
         UserDefaults.standard.set(code, forKey: "nanoom.pendingInvitation")
     }
@@ -38,6 +38,10 @@ final class AppModel {
     func clearInvitation() {
         pendingInviteCode = nil
         UserDefaults.standard.removeObject(forKey: "nanoom.pendingInvitation")
+    }
+
+    var shouldPresentInvitation: Bool {
+        user != nil && pendingInviteCode != nil && !isDemo && composer == nil
     }
 
     @discardableResult

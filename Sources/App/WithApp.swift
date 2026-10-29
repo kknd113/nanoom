@@ -55,7 +55,7 @@ struct RootView: View {
     var body: some View {
         @Bindable var model = model
         Group {
-            if model.user != nil && model.pendingInviteCode != nil && !model.isDemo {
+            if model.shouldPresentInvitation {
                 #if FIREBASE_ENABLED
                 InvitationJoinView(code: model.pendingInviteCode!)
                 #endif
