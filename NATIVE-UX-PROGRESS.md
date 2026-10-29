@@ -90,6 +90,12 @@ Checked the shipped sRGB asset values with relative-luminance contrast arithmeti
 
 Confirmed both Xcode projects declare iOS 18.0 at project level and the only Liquid Glass API is inside the iOS 26 availability branch, after the Reduce Transparency branch. The fallback uses regularMaterial and a rounded stroke. Current SDK builds have already passed; this source check does not replace execution on an iOS 18 runtime. Updated the draft handoff with its current review time and direct implementation commit links. No app changes, Firebase operations or redundant tests were needed. Continue scheduled reviews until the final 08:00 LA handoff.
 
+## Review 10 · October 29, 07:09 LA
+
+Checked the current commit history against the validation logs. There have been documentation-only changes since the invitation-queue fix; its native test log records 10 tests with 0 failures and TEST SUCCEEDED, and the Live log records BUILD SUCCEEDED. Both logs contain Xcode's AppIntents metadata-extraction warning because these targets have no AppIntents.framework dependency; previous “0 runtime warnings” wording must not be read as a claim of completely warning-free builds. Project reference validation and whitespace checks passed again. No app edits or test rerun were justified.
+
+Adjusted the existing automation to one final occurrence at 15:00 UTC / 08:00 LA with its original deadline retained, rather than relying on the next hourly interval landing before the cutoff. An initial proposal allowing a 09:00 cutoff was rejected by automatic approval review; no extension was applied. The accepted schedule is still ACTIVE and the final run must prepare the handoff and pause it. Current scope/data/billing safeguards remain unchanged. Do not mark the morning handoff complete during this 07:00 review.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.
