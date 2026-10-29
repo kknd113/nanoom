@@ -44,6 +44,16 @@ Fixture launch: use the DEBUG-enabled Demo build with `--preview-circle-invitati
 
 Screenshots: `../nanoom-invite-iteration-3.png`, `../nanoom-invite-accessibility.png`, `../nanoom-invite-error.png`, `../nanoom-profile-accessibility.png`. Logs: `../../work/nanoom-native-ux-03-*`. Next review: reduced motion/transparency, detail updates and acknowledgment feedback. Keep hourly reviews active through the final morning handoff.
 
+## Iteration 4 · October 29, 01:09 review
+
+Native Demo walkthrough verified Daniel's prayer, its author update, acknowledgment and undo. At maximum accessibility text, the completed action and its lengthy undo explanation occupied nearly half the reading viewport. Accessibility-size actions now use shorter visible copy (I prayed / Prayed, Tap to undo, Add update) while preserving the person's full name and undo hint in accessibility labels. The saving state also has an explicit accessibility label. Standard-size personal wording stays unchanged.
+
+Verified the real simulator Settings values before changing them: Reduce Motion = off, Reduce Transparency = off. Enabled both temporarily through Settings → Accessibility, reviewed member selection/navigation and the native detail with an opaque action surface, and checked dark appearance and scrolling through the update at maximum text size. Restored both switches to off and text size/appearance to large/light. The synthetic acknowledgment was undone, returning the Demo prayer to its initial state. No live data changed. No issue requiring additional motion or material changes was observed; this was a visual walkthrough and source review, not frame-by-frame animation measurement or a physical-device haptic test.
+
+Both final Demo and Live builds passed, as did project reference validation and whitespace checks. Existing 9 regression tests passed in iteration 3; this pass changes view copy/layout and accessibility labels only, so the suite was not repeated.
+
+Screenshots: `../nanoom-prayer-dock-before.png`, `../nanoom-prayer-dock-accessibility.png`, `../nanoom-prayer-reduced-transparency-dark.png`. Build logs: `../../work/nanoom-native-ux-04-*`. Next reviews should prioritize a smaller phone viewport/long content and final flow consistency rather than more decoration. Full VoiceOver audio and physical-device checks remain outstanding. Morning handoff is still due at 08:00 LA; keep follow-ups active.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.

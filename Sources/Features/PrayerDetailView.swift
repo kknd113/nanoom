@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PrayerDetailView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     let prayerID: String
     @State private var deleteConfirmation = false
     @State private var reacting = false
@@ -66,7 +67,7 @@ struct PrayerDetailView: View {
                 VStack(spacing: 9) {
                     if mine {
                         Button { model.composer = .update(prayer.id) } label: {
-                            Label("Share an update", systemImage: "plus.bubble")
+                            Label(typeSize.isAccessibilitySize ? "Add update" : "Share an update", systemImage: "plus.bubble")
                         }.buttonStyle(PrimaryButtonStyle())
                     } else {
                         Button {
@@ -74,11 +75,17 @@ struct PrayerDetailView: View {
                             Task { await model.togglePrayer(prayer); reacting = false }
                         } label: {
                             if reacting { ProgressView().tint(.withPaper) }
-                            else { Label(prayed ? "Prayed with \(author.displayName)" : "I prayed for \(author.displayName)", systemImage: prayed ? "checkmark" : "heart") }
+                            else {
+                                Label(typeSize.isAccessibilitySize ? (prayed ? "Prayed" : "I prayed") :
+                                        (prayed ? "Prayed with \(author.displayName)" : "I prayed for \(author.displayName)"),
+                                      systemImage: prayed ? "checkmark" : "heart")
+                            }
                         }.buttonStyle(PrimaryButtonStyle()).disabled(reacting)
+                        .accessibilityLabel(reacting ? "Saving your acknowledgment" : prayed ? "Prayed with \(author.displayName)" : "I prayed for \(author.displayName)")
                         .accessibilityHint(prayed ? "Double-tap to undo your acknowledgment." : "Marks this prayer as prayed by you.")
                     }
-                    Text(mine ? "There’s room for the next part, too." : prayed ? "Tap again to undo your acknowledgment." : "Take your time. Be here with them.")
+                    Text(typeSize.isAccessibilitySize ? (mine ? "Share how things are." : prayed ? "Tap to undo." : "Take your time.") :
+                            (mine ? "There’s room for the next part, too." : prayed ? "Tap again to undo your acknowledgment." : "Take your time. Be here with them."))
                         .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }.padding(12).floatingActionSurface()
                 .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 8)
