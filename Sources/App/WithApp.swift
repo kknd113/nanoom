@@ -25,11 +25,29 @@ struct WithApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView().environment(model)
+            appContent.environment(model)
                 .tint(.withAccent)
                 .sensoryFeedback(.success, trigger: model.hapticTrigger)
         }
     }
+    @ViewBuilder
+    private var appContent: some View {
+        #if DEBUG && !FIREBASE_ENABLED && targetEnvironment(simulator)
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("--preview-circle-invitation") {
+            NavigationStack {
+                CircleInvitationView(
+                    invitation: arguments.contains("--preview-invite-error") || arguments.contains("--preview-invite-loading") ? nil :
+                        GroupInvitation(groupID: "synthetic-preview", groupName: "Grace Community Wednesday Evening Prayer Circle", expiresAt: .now.addingTimeInterval(604800)),
+                    loading: arguments.contains("--preview-invite-loading"), joining: false, issue: nil,
+                    join: {}, retry: {}, cancel: {})
+            }
+        } else { RootView() }
+        #else
+        RootView()
+        #endif
+    }
+
 }
 
 struct RootView: View {

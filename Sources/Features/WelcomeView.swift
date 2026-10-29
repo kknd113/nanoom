@@ -163,6 +163,66 @@ struct GroupEntryView: View {
 }
 #endif
 
+/// Shared presentation lets invitation states be reviewed without live accounts or tokens.
+struct CircleInvitationView: View {
+    let invitation: GroupInvitation?
+    let loading: Bool
+    let joining: Bool
+    let issue: String?
+    let join: () -> Void
+    let retry: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 24) {
+                    NanoomSymbol(size: 64)
+                    if let invitation {
+                        VStack(spacing: 12) {
+                            Text("A place for you.").font(.system(.title2, design: .rounded).weight(.medium))
+                            Text(invitation.groupName).font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                                .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        }
+                        Text("Share life. Hold one another in prayer.")
+                            .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Label("Only your circle sees your prayers.", systemImage: "lock.fill")
+                            .font(.footnote).foregroundStyle(Color.withAccent)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(action: join) {
+                            HStack(spacing: 10) {
+                                if joining { ProgressView().tint(.withPaper) }
+                                Text(joining ? "Joining…" : "Join this circle")
+                            }
+                        }.buttonStyle(PrimaryButtonStyle()).disabled(joining)
+                        Text("Invitation expires \(invitation.expiresAt.formatted(date: .abbreviated, time: .omitted)).")
+                            .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else if loading {
+                        ProgressView("Opening your invitation…")
+                    } else {
+                        Text("This invitation couldn’t be opened.")
+                            .font(.system(.title2, design: .rounded).weight(.semibold))
+                            .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+                        Text(issue ?? "Check your connection and try again. If it still won’t open, ask your group leader for a fresh link.")
+                            .foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button("Try again", action: retry).buttonStyle(PrimaryButtonStyle())
+                    }
+                    Button("Not now", action: cancel).frame(minHeight: 44).disabled(joining)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: max(0, geometry.size.height - 60))
+                .padding(30)
+            }
+        }
+        .background(Color.withPaper.ignoresSafeArea())
+        .navigationTitle("You’re invited")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
 #if FIREBASE_ENABLED
 struct InvitationJoinView: View {
     @Environment(AppModel.self) private var model
@@ -170,34 +230,31 @@ struct InvitationJoinView: View {
     @State private var invitation: GroupInvitation?
     @State private var issue: String?
     @State private var loading = true
+    @State private var loadID = UUID()
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-                NanoomSymbol()
-                if let invitation {
-                    Text("A place in\n\(invitation.groupName)").font(.system(.largeTitle, design: .rounded)).multilineTextAlignment(.center)
-                    Text("Share life. Hold one another in prayer.").foregroundStyle(.secondary)
-                    Text("Invitation expires \(invitation.expiresAt.formatted(date: .abbreviated, time: .omitted)).").font(.caption).foregroundStyle(.secondary)
-                    Button("Join this circle") { Task { await model.enterGroup(name: "", code: code) } }
-                        .buttonStyle(PrimaryButtonStyle()).disabled(model.isLoading)
-                } else if loading { ProgressView("Opening your invitation…") }
-                else {
-                    Text("This invitation couldn’t be opened.").font(.title2)
-                    Text(issue ?? "Ask your group leader for a fresh link.").foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    Button("Try again") { Task { await load() } }
-                }
-                Button("Not now") { model.clearInvitation() }.frame(minHeight: 44)
-                Spacer()
-            }.padding(30).background(Color.withPaper.ignoresSafeArea())
+            CircleInvitationView(invitation: invitation, loading: loading, joining: model.isLoading, issue: issue,
+                join: { Task { await model.enterGroup(name: "", code: code) } },
+                retry: { Task { await load() } }, cancel: { model.clearInvitation() })
         }
         .task(id: code) { await load() }
+        .onDisappear { loadID = UUID() }
     }
     private func load() async {
+        let requestID = UUID()
+        loadID = requestID
+        let requestedCode = code
         loading = true; issue = nil; invitation = nil
-        defer { loading = false }
-        do { invitation = try await FirebasePrayerRepository().previewInvitation(code: code) }
-        catch { issue = "The link may have expired or been revoked. Ask your group leader for a new invitation." }
+        do {
+            let preview = try await FirebasePrayerRepository().previewInvitation(code: requestedCode)
+            guard !Task.isCancelled, loadID == requestID else { return }
+            invitation = preview
+            loading = false
+        } catch {
+            guard !Task.isCancelled, loadID == requestID else { return }
+            issue = "Check your connection and try again. If it still won’t open, ask your group leader for a fresh link."
+            loading = false
+        }
     }
 }
 #endif

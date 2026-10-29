@@ -32,6 +32,18 @@ Validation: final Demo and Live simulator builds passed; project validation and 
 
 Screenshots: `../nanoom-accessibility-before.png` records the original clipping; `../nanoom-accessibility-home.png` records the corrected full-name rows and stacked actions. Continue next with invitation/profile flows, long group/member names and reduced motion/transparency; a full VoiceOver audio audit and older/smaller runtime coverage remain pending. Hourly follow-ups remain active until the morning handoff.
 
+## Iteration 3 · October 29, 00:11–00:18 LA
+
+Reviewed profile photo settings at standard and maximum accessibility text sizes. Its native Form, full photo actions and back navigation remained usable, so no cosmetic changes were made there.
+
+Invitation presentation now scrolls, gives the group name its own readable heading, and states the circle's visibility before joining. This applies the Partiful reference's contextual welcome principle as our design hypothesis. Loading, success and error states share the same native component. Failure copy now includes a connection/retry path rather than implying every failure is an expired link. Joining disables both duplicate joining and dismissal; invitation preview requests ignore canceled, superseded or departed-screen results.
+
+Validation: normal Demo and Live builds passed, and a separate Demo build with `SWIFT_ACTIVE_COMPILATION_CONDITIONS=DEBUG` enabled the opt-in simulator presentation fixtures. Native walkthrough verified the shared invitation component with a long synthetic group name, maximum accessibility text, scrolling to Join/Not now, plus loading and failure presentations. Native regression suite passed again (9 tests). No real invitations were issued, revoked or joined; no live photo, account or prayer data changed. Original text size (`large`) was restored.
+
+Fixture launch: use the DEBUG-enabled Demo build with `--preview-circle-invitation`; append `--preview-invite-error` or `--preview-invite-loading` for those states. These fixtures review presentation only: their Join/Retry/Not now closures deliberately have no effects, and the fixture branch is excluded from Firebase builds and Release builds. Default Demo launches still show normal onboarding. Actual server invitation behavior retains the existing repository/rules and previous cloud checks; no new end-to-end live join was performed this pass.
+
+Screenshots: `../nanoom-invite-iteration-3.png`, `../nanoom-invite-accessibility.png`, `../nanoom-invite-error.png`, `../nanoom-profile-accessibility.png`. Logs: `../../work/nanoom-native-ux-03-*`. Next review: reduced motion/transparency, detail updates and acknowledgment feedback. Keep hourly reviews active through the final morning handoff.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.
