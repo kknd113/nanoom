@@ -10,14 +10,39 @@ extension Color {
 
 struct PrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(.subheadline, design: .rounded).weight(.medium))
+            .font(.system(.callout, design: .rounded).weight(.semibold))
             .frame(maxWidth: .infinity, minHeight: 54)
-            .background(Color.withInk, in: RoundedRectangle(cornerRadius: 20))
+            .background(Color.withInk, in: Capsule())
             .foregroundStyle(Color.withPaper)
             .opacity(!enabled ? 0.45 : configuration.isPressed ? 0.8 : 1)
-            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+    }
+}
+
+/// Glass belongs to floating controls; prayer content keeps a stable reading surface.
+struct FloatingActionSurface: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    func body(content: Content) -> some View {
+        if reduceTransparency {
+            content.background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 30))
+                .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.withInk.opacity(0.12)))
+        } else if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: RoundedRectangle(cornerRadius: 30))
+        } else {
+            content.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 30))
+                .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.withInk.opacity(0.08)))
+        }
+    }
+}
+
+extension View {
+    func floatingActionSurface() -> some View { modifier(FloatingActionSurface()) }
+    func prayerCardSurface() -> some View {
+        background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 28))
+            .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.withInk.opacity(0.07)))
     }
 }
 

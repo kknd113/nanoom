@@ -9,103 +9,125 @@ struct PrayerDetailView: View {
     var body: some View {
         if let prayer = model.prayer(id: prayerID), let author = model.author(of: prayer) {
             let mine = prayer.authorID == model.user?.id
+            let prayed = prayer.prayedBy.contains(model.user?.id ?? "")
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(spacing: 16) {
-                        MemberAvatar(member: author, size: 76).padding(.top, 34)
-                        Text(mine ? "What you’re carrying" : "A moment for \(author.displayName).")
-                            .font(.system(.title2, design: .rounded).weight(.medium))
-                        Text(prayer.createdAt, style: .relative).font(.caption).foregroundStyle(.secondary)
-                    }.frame(maxWidth: .infinity)
-                    Text(prayer.body).font(.system(.title2, design: .default)).lineSpacing(7)
-                        .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+                VStack(alignment: .leading, spacing: 28) {
+                    HStack(spacing: 14) {
+                        MemberAvatar(member: author, size: 54)
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(mine ? "Your prayer" : author.displayName)
+                                .font(.system(.title3, design: .rounded).weight(.semibold))
+                            Text(prayer.createdAt, style: .date).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "lock.fill").font(.caption).foregroundStyle(.tertiary).accessibilityLabel("Shared only with your group")
+                    }
+                    Text(prayer.body).font(.title3).lineSpacing(7)
+                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                     if !prayer.updates.isEmpty {
-                        VStack(alignment: .leading, spacing: 20) {
-                            Text("THE STORY CONTINUES").font(.caption2).tracking(1.5).foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 18) {
+                            Label("A little further along", systemImage: "leaf")
+                                .font(.system(.headline, design: .rounded)).foregroundStyle(Color.withInk)
                             ForEach(prayer.updates.sorted { $0.createdAt < $1.createdAt }) { update in
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text(update.createdAt, style: .date).font(.caption2).foregroundStyle(.secondary)
-                                    Text(update.body).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
+                                HStack(alignment: .top, spacing: 13) {
+                                    Circle().fill(Color.withAccent.opacity(0.55)).frame(width: 7, height: 7).padding(.top, 6)
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(update.createdAt, style: .date).font(.caption).foregroundStyle(.secondary)
+                                        Text(update.body).lineSpacing(5).fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                                    }
                                 }
                             }
-                        }
-                        .padding(.leading, 16)
-                        .overlay(alignment: .leading) { Rectangle().fill(Color.withAccent.opacity(0.3)).frame(width: 2) }
+                        }.padding(22).frame(maxWidth: .infinity, alignment: .leading).prayerCardSurface()
                     }
                     let names = prayer.prayedBy.compactMap { id in model.group?.members.first { $0.id == id }?.displayName }
                     if !names.isEmpty {
-                        Text("\(names.sorted().joined(separator: ", ")) prayed with you.")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Label("\(names.sorted().joined(separator: ", ")) prayed with \(mine ? "you" : author.displayName).", systemImage: "heart.fill")
+                            .font(.footnote).foregroundStyle(.secondary)
                     }
-                }
-                .padding(.horizontal, 28).padding(.bottom, 32)
+                }.padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 28)
             }
             .background(Color.withPaper.ignoresSafeArea())
-            .navigationTitle("").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(mine ? "On your heart" : "With \(author.displayName)")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.visible, for: .navigationBar)
             .toolbar {
                 if mine {
                     ToolbarItem(placement: .topBarTrailing) {
                         Menu {
+                            Button("Add an update", systemImage: "plus.bubble") { model.composer = .update(prayer.id) }
                             Button("Edit prayer", systemImage: "pencil") { model.composer = .edit(prayer.id) }
                             Button("Delete prayer", systemImage: "trash", role: .destructive) { deleteConfirmation = true }
-                        } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                        } label: { Image(systemName: "ellipsis") }
+                        .accessibilityLabel("Prayer actions")
                     }
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                VStack(spacing: 10) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 9) {
                     if mine {
                         Button { model.composer = .update(prayer.id) } label: {
-                            Label("Share a little update", systemImage: "plus")
+                            Label("Share an update", systemImage: "plus.bubble")
                         }.buttonStyle(PrimaryButtonStyle())
                     } else {
-                        let prayed = prayer.prayedBy.contains(model.user?.id ?? "")
                         Button {
                             reacting = true
                             Task { await model.togglePrayer(prayer); reacting = false }
                         } label: {
-                            Label(prayed ? "You prayed for \(author.displayName)" : "I prayed for \(author.displayName)",
-                                  systemImage: prayed ? "checkmark" : "heart")
+                            if reacting { ProgressView().tint(.withPaper) }
+                            else { Label(prayed ? "Prayed with \(author.displayName)" : "I prayed for \(author.displayName)", systemImage: prayed ? "checkmark" : "heart") }
                         }.buttonStyle(PrimaryButtonStyle()).disabled(reacting)
+                        .accessibilityHint(prayed ? "Double-tap to undo your acknowledgment." : "Marks this prayer as prayed by you.")
                     }
-                    Text("Take a moment. You’re here together.").font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 26).padding(.top, 14).padding(.bottom, 8).background(.regularMaterial)
+                    Text(mine ? "There’s room for the next part, too." : prayed ? "Tap again to undo your acknowledgment." : "Take your time. Be here with them.")
+                        .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                }.padding(12).floatingActionSurface()
+                .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 8)
             }
             .confirmationDialog("Remove this prayer and its updates from your circle?", isPresented: $deleteConfirmation, titleVisibility: .visible) {
                 Button("Delete prayer", role: .destructive) { Task { await model.delete(prayer) } }
             }
         } else {
             ContentUnavailableView("This prayer is no longer here", systemImage: "book.closed")
+                .toolbar(.visible, for: .navigationBar)
         }
     }
 }
 
 struct MyPrayersView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
     var body: some View {
         Group {
             if model.myPrayers.isEmpty {
                 ContentUnavailableView {
-                    Label("There’s room for your story", systemImage: "heart.text.clipboard")
+                    Label("Room for your story", systemImage: "heart.text.clipboard")
                 } description: {
                     Text("A small worry. A big hope. You can share it here.")
                 } actions: {
-                    Button("Share your first prayer") { dismiss(); model.composer = .prayer }
+                    Button("Share your first prayer") { model.composer = .prayer }
+                        .buttonStyle(.borderedProminent).buttonBorderShape(.capsule)
                 }
             } else {
                 List(model.myPrayers) { prayer in
                     NavigationLink { PrayerDetailView(prayerID: prayer.id) } label: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(prayer.body).lineLimit(3)
-                            Text(prayer.createdAt, style: .date).font(.caption).foregroundStyle(.secondary)
-                        }.padding(.vertical, 8)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(prayer.body).font(.body).lineSpacing(3).lineLimit(3)
+                            HStack(spacing: 12) {
+                                Text(prayer.createdAt, style: .date)
+                                if !prayer.updates.isEmpty { Label("Updated", systemImage: "leaf") }
+                            }.font(.caption).foregroundStyle(.secondary)
+                        }.padding(.vertical, 10)
                     }
-                }
+                    .listRowBackground(Color(uiColor: .secondarySystemGroupedBackground))
+                }.listStyle(.insetGrouped).scrollContentBackground(.hidden)
             }
         }
+        .background(Color.withPaper.ignoresSafeArea())
         .navigationTitle("My prayers")
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar { ToolbarItem(placement: .topBarTrailing) {
+            Button { model.composer = .prayer } label: { Image(systemName: "square.and.pencil") }
+                .accessibilityLabel("Share a prayer")
+        } }
     }
 }

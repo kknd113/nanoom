@@ -6,36 +6,57 @@ struct PrayerComposerView: View {
     @FocusState private var focused: Bool
     let route: ComposerRoute
     @State private var text = ""
+    @State private var initialText = ""
     @State private var saving = false
+    @State private var discardConfirmation = false
 
     private var draftKey: String { "with.draft.\(model.user?.id ?? "anonymous").\(route.id)" }
     private var isUpdate: Bool { if case .update = route { return true }; return false }
     private var isEdit: Bool { if case .edit = route { return true }; return false }
     private var trimmed: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var hasChanges: Bool { text != initialText }
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(isUpdate ? "How have\nthings been?" : isEdit ? "A little\nchange of words." : "What’s on\nyour heart?")
-                    .font(.system(.largeTitle, design: .rounded).weight(.medium)).tracking(-1)
-                Text(isUpdate ? "Still waiting is part of the story, too." : "Big or small, you can share it here.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                TextEditor(text: $text)
-                    .font(.title3).lineSpacing(6).focused($focused)
-                    .scrollContentBackground(.hidden).frame(minHeight: 180)
-                    .accessibilityLabel(isUpdate ? "Your update" : "Your prayer")
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 7) {
+                    Image(systemName: "lock.fill").font(.caption2)
+                    Text(model.group?.name ?? "Your small group").font(.caption.weight(.medium))
+                }.foregroundStyle(Color.withAccent).padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Color.withSoft, in: Capsule())
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(isUpdate ? "How have things been?" : isEdit ? "Make it feel like you." : "What’s on your heart?")
+                        .font(.system(.title2, design: .rounded).weight(.semibold)).tracking(-0.4)
+                    Text(isUpdate ? "Still waiting is part of the story, too." : "Small prayers belong here, too.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+                ZStack(alignment: .topLeading) {
+                    if text.isEmpty {
+                        Text(isUpdate ? "A change, a little hope, or where things are today…" : "A small worry, a big hope, or something to be thankful for…")
+                            .font(.title3).foregroundStyle(.tertiary).padding(.top, 8).padding(.leading, 5)
+                            .allowsHitTesting(false).accessibilityHidden(true)
+                    }
+                    TextEditor(text: $text).font(.title3).lineSpacing(6).focused($focused)
+                        .scrollContentBackground(.hidden).frame(minHeight: 120)
+                        .accessibilityLabel(isUpdate ? "Your update" : "Your prayer")
+                }
                 HStack {
-                    Label("Only your small group", systemImage: "lock").font(.caption)
+                    Text("Only your circle can see this.").font(.caption)
                     Spacer()
-                    Text("\(text.count)/2000").font(.caption2)
+                    Text("\(text.count)/2000").font(.caption.monospacedDigit())
                         .foregroundStyle(text.count > 2_000 ? Color.red : Color.secondary)
                 }.foregroundStyle(.secondary)
             }
-            .padding(26).background(Color.withPaper.ignoresSafeArea())
+            .padding(.horizontal, 24).padding(.top, 18).padding(.bottom, 12)
+            .background(Color.withPaper.ignoresSafeArea())
+            .navigationTitle(isUpdate ? "Add update" : isEdit ? "Edit prayer" : "New prayer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.disabled(saving)
+                    Button("Cancel") {
+                        if hasChanges { discardConfirmation = true }
+                        else { dismiss() }
+                    }.disabled(saving)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(saving ? "Sharing…" : isEdit ? "Save" : "Share") {
@@ -49,13 +70,26 @@ struct PrayerComposerView: View {
                         }
                     }.disabled(trimmed.isEmpty || text.count > 2_000 || saving)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button { focused = false } label: { Image(systemName: "keyboard.chevron.compact.down") }
+                        .accessibilityLabel("Hide keyboard")
+                }
+            }
+            .confirmationDialog("Discard your changes?", isPresented: $discardConfirmation, titleVisibility: .visible) {
+                Button("Discard changes", role: .destructive) {
+                    if model.isDemo { UserDefaults.standard.removeObject(forKey: draftKey) }
+                    dismiss()
+                }
+                Button("Keep writing", role: .cancel) {}
             }
         }
         .presentationDragIndicator(.visible)
-        .interactiveDismissDisabled(saving)
+        .interactiveDismissDisabled(saving || hasChanges)
         .onAppear {
+            if case .edit(let id) = route { initialText = model.prayer(id: id)?.body ?? "" }
             if model.isDemo, let draft = UserDefaults.standard.string(forKey: draftKey) { text = draft }
-            else if case .edit(let id) = route { text = model.prayer(id: id)?.body ?? "" }
+            else { text = initialText }
             focused = true
         }
         .onChange(of: text) { _, value in

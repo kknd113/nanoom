@@ -5,87 +5,131 @@ import ImageIO
 struct CircleHomeView: View {
     @Environment(AppModel.self) private var model
     @State private var settings = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         @Bindable var model = model
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack(spacing: 16) {
                     WithWordmark()
-                    Spacer()
+                    Spacer(minLength: 8)
                     Button { settings = true } label: {
-                        Text(model.group?.name ?? "Your group").font(.caption).foregroundStyle(.secondary)
-                            .padding(.vertical, 14)
-                    }.accessibilityLabel("Group settings")
+                        Image(systemName: "person.2.crop.square.stack")
+                            .font(.system(size: 18, weight: .medium))
+                            .frame(width: 46, height: 46)
+                    }
+                    .buttonStyle(.plain).floatingActionSurface()
+                    .accessibilityLabel("Group and profile settings")
                 }
-                Text("Your people.\nHeld in prayer.")
-                    .font(.system(.largeTitle, design: .rounded).weight(.medium)).tracking(-1)
-                    .padding(.top, 14)
-                Text("A little space to be here for one another.").font(.subheadline).foregroundStyle(.secondary)
-                PrayerCircleView().padding(.top, 12)
-                if let member = model.selectedMember {
-                    selectedPrayerCard(member)
-                } else {
-                    ContentUnavailableView("Your circle starts here", systemImage: "person.2", description: Text("Invite someone to begin sharing prayer."))
-                }
-            }
-            .padding(.horizontal, 26).padding(.bottom, 20)
-        }
-        .background(Color.withPaper.ignoresSafeArea())
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 6) {
-                Button { model.composer = .prayer } label: { Label("Share a prayer", systemImage: "plus") }
-                    .buttonStyle(PrimaryButtonStyle())
-                HStack {
-                    Text(model.isDemo ? "Local demo · Sample group" : "Just your small group").font(.caption2).foregroundStyle(.secondary)
-                    Spacer()
-                    Button { model.path.append("__mine") } label: {
-                        Label("My prayers", systemImage: "arrow.up.right").font(.caption)
-                            .frame(minHeight: 44)
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Your circle").font(.system(.largeTitle, design: .rounded).weight(.bold)).tracking(-0.8)
+                    HStack(spacing: 6) {
+                        Image(systemName: "lock.fill").font(.caption2)
+                        Text(model.group?.name ?? "Your people").font(.subheadline)
+                    }.foregroundStyle(.secondary)
+                    if model.isDemo {
+                        Text("Local demo · Sample group").font(.caption2).foregroundStyle(.secondary)
                     }
                 }
+                if model.others.isEmpty {
+                    emptyCircle
+                } else {
+                    PrayerCircleView()
+                    if let member = model.selectedMember { selectedPrayerCard(member) }
+                }
             }
-            .padding(.horizontal, 26).padding(.top, 12)
-            .background(.regularMaterial)
+            .padding(.horizontal, 22).padding(.top, 8).padding(.bottom, 24)
+        }
+        .background(Color.withPaper.ignoresSafeArea())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            HStack(spacing: 10) {
+                Button { model.composer = .prayer } label: {
+                    Label("Share a prayer", systemImage: "plus")
+                }.buttonStyle(PrimaryButtonStyle())
+                Button { model.path.append("__mine") } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: "text.book.closed").font(.system(size: 19, weight: .medium))
+                        Text("My prayers").font(.caption2.weight(.medium))
+                    }.frame(minWidth: 72, minHeight: 54)
+                }.buttonStyle(.plain).accessibilityLabel("My prayers")
+            }
+            .padding(10).floatingActionSurface()
+            .padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 8)
         }
         .toolbar(.hidden, for: .navigationBar)
         .refreshable { await model.refresh() }
         .sheet(isPresented: $settings) {
             NavigationStack { GroupSettingsView() }.environment(model)
+                .presentationDragIndicator(.visible)
         }
+        .onChange(of: model.pendingInviteCode) { _, code in if code != nil { settings = false } }
+    }
+
+    private var emptyCircle: some View {
+        VStack(spacing: 18) {
+            if let me = model.group?.members.first(where: { $0.id == model.user?.id }) {
+                MemberAvatar(member: me, size: 72)
+            }
+            Text("It starts with you.").font(.system(.title2, design: .rounded).weight(.semibold))
+            Text("A small worry. A big hope. Make room for your people, even between Sundays.")
+                .foregroundStyle(.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            if model.group?.ownerID == model.user?.id {
+                Button("Invite your people") { settings = true }.buttonStyle(.bordered).buttonBorderShape(.capsule)
+            } else {
+                Text("Your circle is taking shape.").font(.caption).foregroundStyle(.secondary)
+            }
+        }.frame(maxWidth: .infinity).padding(28).prayerCardSurface().padding(.vertical, 18)
     }
 
     @ViewBuilder
     private func selectedPrayerCard(_ member: GroupMember) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("On \(member.displayName)’s heart").font(.caption)
-                Spacer()
-                if model.selectedPrayers.first?.updates.isEmpty == false {
-                    Label("An update", systemImage: "wind").font(.caption2).foregroundStyle(.secondary)
-                }
-            }
+        VStack(alignment: .leading, spacing: 12) {
             if let prayer = model.selectedPrayers.first {
-                Text(prayer.body).font(.body).lineSpacing(5).fixedSize(horizontal: false, vertical: true)
                 Button { model.path.append(prayer.id) } label: {
-                    HStack { Text("Pray with \(member.displayName)"); Spacer(); Image(systemName: "arrow.right") }
-                        .font(.subheadline).frame(minHeight: 44)
-                }
+                    VStack(alignment: .leading, spacing: 18) {
+                        HStack(spacing: 11) {
+                            MemberAvatar(member: member, size: 38)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(member.displayName).font(.subheadline.weight(.semibold)).foregroundStyle(Color.withInk)
+                                Text("On their heart").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            if !prayer.updates.isEmpty {
+                                Label("Updated", systemImage: "sparkle").font(.caption2.weight(.medium))
+                                    .foregroundStyle(Color.withAccent)
+                            }
+                        }
+                        Text(prayer.body).font(.body).lineSpacing(5).lineLimit(4)
+                            .foregroundStyle(Color.withInk).multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            Text("Pray with \(member.displayName)").font(.subheadline.weight(.semibold))
+                            Spacer()
+                            Image(systemName: "arrow.up.right").font(.subheadline.weight(.medium))
+                        }.foregroundStyle(Color.withAccent).frame(minHeight: 30)
+                    }.padding(22).frame(maxWidth: .infinity, alignment: .leading).prayerCardSurface()
+                }.buttonStyle(.plain)
+                .accessibilityElement(children: .combine)
+                .accessibilityHint("Opens the prayer and its updates. Does not mark it as prayed.")
                 if model.selectedPrayers.count > 1 {
-                    Menu("More prayers from \(member.displayName)") {
+                    Menu {
                         ForEach(model.selectedPrayers.dropFirst()) { prayer in
                             Button(String(prayer.body.prefix(70))) { model.path.append(prayer.id) }
                         }
-                    }.font(.caption).frame(minHeight: 44)
+                    } label: {
+                        Label("More from \(member.displayName)", systemImage: "ellipsis")
+                            .font(.subheadline).frame(minHeight: 44)
+                    }
                 }
             } else {
-                Text("There’s room for their story here, whenever they’re ready.").foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Room for \(member.displayName)’s story.").font(.system(.title3, design: .rounded).weight(.medium))
+                    Text("Whenever they’re ready. Being here matters, too.").font(.subheadline).foregroundStyle(.secondary)
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(24).prayerCardSurface()
             }
         }
-        .padding(20)
-        .background(Color.withPaper, in: RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.withInk.opacity(0.09), lineWidth: 1))
-        .animation(.easeInOut(duration: 0.2), value: model.selectedMemberID)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: model.selectedMemberID)
     }
 }
 
@@ -101,26 +145,26 @@ struct PrayerCircleView: View {
             }.padding(.vertical, 25)
         } else {
             GeometryReader { geometry in
-                let center = CGPoint(x: geometry.size.width / 2, y: 141)
+                let center = CGPoint(x: geometry.size.width / 2, y: 132)
                 let radiusX = min(geometry.size.width / 2 - 38, 108)
                 ZStack {
                     Ellipse().stroke(Color.withInk.opacity(0.08), lineWidth: 1)
-                        .frame(width: radiusX * 2, height: 196).position(center)
+                        .frame(width: radiusX * 2, height: 184).position(center)
                     Ellipse().fill(RadialGradient(colors: [.withSoft, .withPaper.opacity(0)], center: .center,
                                                  startRadius: 2, endRadius: 130))
                         .frame(width: 260, height: 230).position(center)
                     VStack(spacing: 4) {
-                        Text(model.group?.name ?? "Your circle").font(.system(.title3, design: .rounded).weight(.medium))
-                        Text("Life, held together.").font(.caption2).foregroundStyle(.secondary)
+                        NanoomSymbol(size: 30)
+                        Text("Held together.").font(.caption).foregroundStyle(.secondary)
                     }.frame(maxWidth: 132).position(center)
                     ForEach(Array(model.others.enumerated()), id: \.element.id) { index, member in
                         let angle = -Double.pi / 2 + Double(index) * 2 * .pi / Double(max(model.others.count, 1))
                         memberButton(member)
                             .position(x: center.x + CGFloat(cos(angle)) * radiusX,
-                                      y: center.y + CGFloat(sin(angle)) * 103)
+                                      y: center.y + CGFloat(sin(angle)) * 94)
                     }
                 }
-            }.frame(height: 287)
+            }.frame(height: 270)
         }
     }
 
