@@ -27,6 +27,8 @@
 
 ## 화면과 변경 기록
 
+화면 링크는 이 작업의 로컬 outputs 폴더에 있는 이미지입니다. GitHub 저장소에는 스크린샷을 올리지 않았으므로 GitHub에서 문서를 볼 때는 열리지 않습니다.
+
 - [홈](../nanoom-native-ux-home.png), [다크 홈](../nanoom-native-ux-dark.png)
 - [큰 글씨 홈](../nanoom-accessibility-home.png), [읽기 공간을 확보한 상세](../nanoom-prayer-dock-accessibility.png)
 - [초대](../nanoom-invite-iteration-3.png), [초대 오류](../nanoom-invite-error.png)
