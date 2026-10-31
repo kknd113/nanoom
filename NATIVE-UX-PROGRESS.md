@@ -120,3 +120,9 @@ Facts: Apple's current guidance treats Liquid Glass as a navigation/control laye
 - [WWDC25 · Meet Liquid Glass](https://developer.apple.com/videos/play/wwdc2025/219/)
 
 Limits: iOS 18 fallback compiles against the current SDK but has not yet been exercised on an iOS 18 runtime. Current visual verification uses iPhone 18 Pro and iPhone 17e / iOS 27 simulators. VoiceOver labels were inspected through accessibility state; a full VoiceOver listening audit remains outstanding. No claim of production readiness.
+
+## Manual core-flow follow-up · October 30
+
+At the user's request, completed a new real-Firebase verification pass after the overnight automation had stopped. Found and fixed a reproducible native read failure after account switching by replacing the Firestore client and its memory-only cache for a different UID, while waiting for existing group reads and guarding in-flight invitation work. No deployed rules or billing settings changed.
+
+Final evidence: 19 real native SDK/AppModel checks, 58 independent JS rules checks and 10 native regression tests passed. Actual native UI verified author update/edit saves and reload after normal process restart, photo picker/crop/upload/removal, and OS invitation preview/join for an already joined account. All manifest-tracked accounts and document/index records from diagnostic runs and the final run were independently checked absent. See [CORE-FLOW-QA.md](CORE-FLOW-QA.md) for the precise scope, experimental diagnostic failure, screenshots, cleanup and remaining device/accessibility limits. This follow-up did not restart the overnight automation.

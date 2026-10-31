@@ -7,7 +7,31 @@ import FirebaseFirestore
 /// Spark-plan adapter. Group membership is checked by Firestore rules in atomic batches.
 @MainActor
 final class FirebasePrayerRepository: PrayerRepository {
+    private static var sessionUserID: String?
+    private static var sessionGeneration = 0
+    private static var activeLoads = 0
+    private static var preparingSession = false
     private var db: Firestore { get throws { try database() } }
+
+    /// A different account must start with a fresh client and an empty private cache.
+    func prepareSession(userID: String) async throws {
+        while Self.preparingSession { try await Task.sleep(for: .milliseconds(20)) }
+        Self.preparingSession = true
+        defer { Self.preparingSession = false }
+        guard Auth.auth().currentUser?.uid == userID else { throw CancellationError() }
+        if let previous = Self.sessionUserID, previous != userID {
+            // Let readers release their captured client before replacing it.
+            while Self.activeLoads > 0 { try await Task.sleep(for: .milliseconds(20)) }
+            guard Auth.auth().currentUser?.uid == userID else { throw CancellationError() }
+            Self.sessionGeneration += 1
+            try await database().terminate()
+            let fresh = Firestore.firestore()
+            let settings = FirestoreSettings()
+            settings.cacheSettings = MemoryCacheSettings()
+            fresh.settings = settings
+        }
+        Self.sessionUserID = userID
+    }
 
     func createGroup(name: String, user: AppUser) async throws {
         guard !name.isEmpty, name.count <= 60 else { throw GroupError.invalidName }
@@ -22,11 +46,14 @@ final class FirebasePrayerRepository: PrayerRepository {
     }
 
     func joinGroup(code: String, user: AppUser) async throws {
+        let generation = Self.sessionGeneration
         guard let token = InvitationLink.code(fromInput: code) else { throw GroupError.invalidInvitation }
         let db = try db
         let invitation = try await previewInvitation(code: token)
+        guard generation == Self.sessionGeneration, Auth.auth().currentUser?.uid == user.id else { throw CancellationError() }
         let groupID = invitation.groupID
         let existing = try await db.collection("users").document(user.id).collection("groupMemberships").document(groupID).getDocument()
+        guard generation == Self.sessionGeneration, Auth.auth().currentUser?.uid == user.id else { throw CancellationError() }
         if existing.exists {
             UserDefaults.standard.set(groupID, forKey: "nanoom.activeGroup.\(user.id)")
             return
@@ -40,9 +67,11 @@ final class FirebasePrayerRepository: PrayerRepository {
     }
 
     func createInvitation(groupID: String) async throws -> String {
+        let generation = Self.sessionGeneration
         let db = try db
         guard let userID = Auth.auth().currentUser?.uid else { throw GroupError.invalidInvitation }
         let group = try await db.collection("groups").document(groupID).getDocument()
+        guard generation == Self.sessionGeneration, Auth.auth().currentUser?.uid == userID else { throw CancellationError() }
         guard let groupName = group.data()?["name"] as? String else { throw WithError.noGroup }
         let code = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         try await db.collection("invitations").document(code).setData([
@@ -88,6 +117,8 @@ final class FirebasePrayerRepository: PrayerRepository {
     }
 
     func loadGroup(userID: String) async throws -> PrayerGroup {
+        Self.activeLoads += 1
+        defer { Self.activeLoads -= 1 }
         let db = try database()
         let memberships = db.collection("users").document(userID).collection("groupMemberships")
         let groupID: String

@@ -28,7 +28,7 @@ Backend: **nanoom-kknd113**, Firebase Spark, Firestore Standard `(default)`, **u
 - Fixed missing simulator Keychain entitlements (Firebase 17995 / OSStatus -34018) by enabling app-scoped local signing. Native Firebase account creation, sign-out/sign-in and session restoration across process restart were verified; the synthetic account was deleted.
 - **58 checks against the actual cloud backend** passed: multi-account sharing, invitation join/revocation, author ownership, schema/size/timestamp validation, reaction uniqueness, unauthenticated/outsider denial, deleted-thread denial, avatar ownership/size/schema/privacy validation and invitation-name spoof prevention.
 - Synthetic verification accounts and their test group/index records were cleaned up.
-- Nine native tests passed across the demo/domain suites, covering existing prayer behavior plus strict invite parsing, pending-link persistence, photo ownership/persistence/removal and stale-response isolation after logout or a newer refresh. Native photo picker → crop → saved avatar display was visually verified with a synthetic image.
+- Ten native tests passed across the demo/domain suites, covering existing prayer behavior plus strict invite parsing, pending-link persistence, photo ownership/persistence/removal and stale-response isolation after logout or a newer refresh. Native photo picker → crop → saved avatar display was visually verified with a synthetic image.
 
 ## Limits before broader release
 
@@ -39,3 +39,7 @@ See [SETUP.md](SETUP.md) for configuration, verification and rule-review details
 ## Overnight design and research
 
 [Brand directions and SVG masters](Branding/README.md) · [Visual brand board](Branding/index.html) · [Sourced market review and next-move recommendation](Research/market-review.md). The user selected Held n refinement 02; its symbol, outlined wordmark and light/dark icons now appear in the native app. Earlier alternatives remain available as design history.
+
+## Core-flow verification · October 30
+
+The real Firebase flow passed 19 native SDK/AppModel checks, 58 independent server/rules checks and 10 native regression tests. Native UI additionally verified author edits/updates, relaunch persistence, profile photo selection/upload/removal and OS invitation routing. Account switches now recreate the memory-only Firestore client before loading the next circle. See [CORE-FLOW-QA.md](CORE-FLOW-QA.md) for evidence, cleanup and limits.

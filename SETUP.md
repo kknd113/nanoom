@@ -74,3 +74,11 @@ Profile photos live at groups/{groupID}/memberPhotos/{uid}, separate from member
 Small avatars use existing Spark Firestore rather than provisioning Cloud Storage, which currently requires Blaze. This is suitable for the initial small-circle pilot; image transfer still counts against the project's normal Firestore quotas. Reassess storage and lazy photo loading before scaling. Photos remain access-controlled, not end-to-end encrypted.
 
 Deployed classic Hosting source: Backend/Hosting. To deploy link-page changes from Backend: `npx -y firebase-tools@latest deploy --only hosting --project nanoom-kknd113`.
+
+## Repeatable native core-flow verification
+
+DEBUG Firebase simulator builds also support `--verify-native-flow`. Use a separate simulator with **no signed-in account**. It refuses to run if any account is present or a prior cleanup manifest remains. It creates fresh synthetic owner/member accounts, exercises the real repository and AppModel, then leaves only the synthetic owner signed in for native UI review. A successful run logs 19 `NANOOM_FLOW PASS` lines and `NANOOM_FLOW READY`. Passwords stay in memory and are never logged or written to the manifest.
+
+Launch normally afterward to check persisted authentication and server reload. When finished, launch with `--cleanup-native-flow`. That switch only clears a currently signed-in account whose UID is in this run's manifest and whose email matches the synthetic test namespace. It never signs out a normal account. The member account is deleted during a successful run; interrupted runs require verifying all manifest UIDs through trusted administration.
+
+The app's Documents/nanoom-qa-manifest.json contains only synthetic cleanup metadata. Obtain its directory with `xcrun simctl get_app_container <test-device-UUID> com.kknd113.nanoom data`. After confirming synthetic ownership, use the existing authenticated Firebase CLI to recursively delete exactly `groups/{groupID}`, `invitations/{invitationID}` and `users/{uid}` for each manifest UID. Verify test accounts are absent, then archive/remove the manifest before another run. Never substitute real IDs or delete a whole collection. See CORE-FLOW-QA.md for the completed run's evidence and limits.

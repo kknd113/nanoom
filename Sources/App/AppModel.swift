@@ -65,6 +65,15 @@ final class AppModel {
             group = nil; path = []; inviteCode = nil
         }
         user = AppUser(id: id, displayName: name)
+        #if FIREBASE_ENABLED
+        do { try await (repository as? FirebasePrayerRepository)?.prepareSession(userID: id) }
+        catch {
+            guard user?.id == id else { return }
+            errorMessage = error.localizedDescription
+            return
+        }
+        guard user?.id == id else { return }
+        #endif
         await refresh()
     }
 
