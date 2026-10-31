@@ -96,6 +96,20 @@ Checked the current commit history against the validation logs. There have been 
 
 Adjusted the existing automation to one final occurrence at 15:00 UTC / 08:00 LA with its original deadline retained, rather than relying on the next hourly interval landing before the cutoff. An initial proposal allowing a 09:00 cutoff was rejected by automatic approval review; no extension was applied. The accepted schedule is still ACTIVE and the final run must prepare the handoff and pause it. Current scope/data/billing safeguards remain unchanged. Do not mark the morning handoff complete during this 07:00 review.
 
+## Follow-up · October 29, 07:35 LA
+
+The user asked to continue after the status check. Opened the isolated Demo and verified Home → My prayers reaches its empty state (“Room for your story” and “Share your first prayer”) through the native accessibility tree. The first-prayer button action then timed out, and the next observation explicitly reported the Mac was locked and could not be automatically unlocked. Requested manual unlock through the in-chat question tool. Do not record the remaining author create/edit/update native walkthrough as passed. No draft was entered and no prayer was submitted in this attempt.
+
+Independent source review confirms My prayers uses the composer for its first-prayer action, author detail exposes update/edit actions, and the editor initializes edits from the original prayer body. Existing isolated repository tests cover successive update persistence and rejection of editing another member's prayer; these are not a replacement for the interrupted native author walkthrough. No code changes were justified. The 08:00 final review remains scheduled; if the Mac is still locked, finish the handoff with that explicit limitation instead of claiming a UI pass or stopping unrelated documentation work.
+
+## Final handoff · October 30, 10:06 LA resume
+
+The final review was interrupted across the planned deadline by the locked Mac and an automatic approval review timeout on the read-only Git fetch. On resuming October 30, paused the existing automation successfully; the one permitted fetch retry succeeded. No timed-out operation was assumed unsafe and no additional user approval is now needed for that resolved fetch.
+
+After the user confirmed unlock, native My prayers → Share your first prayer opened the correct composer. Input automation again produced unexpected text/IME behavior, and the tool reported that the app had changed during the attempt. Stopped editing to preserve the current draft; Capture Keyboard was observed restored to off. Did not tap Share, edit/delete any prayer, or complete the remaining native author-update walkthrough. This remains a documented verification limit rather than an app defect or passing test. No real Firebase account, prayer or photo was modified.
+
+Final implementation remains the tested invitation-queue commit af738aa; later commits document reviews only. Existing evidence: 10 native tests passed, final Live/Demo builds passed, two simulator sizes plus light/dark and accessibility text reviews completed. No redundant rebuild was run for final documentation changes. Final handoff includes local screenshots, implementation commits, research sources and remaining physical-device/iOS 18/VoiceOver/author-flow limits. Overnight automation is PAUSED; no further scheduled design iterations are requested by this handoff.
+
 ## Design references
 
 Facts: Apple's current guidance treats Liquid Glass as a navigation/control layer and favors standard controls adopting system design. The decision to keep Nanoom content calm and opaque is our product interpretation of that guidance.
